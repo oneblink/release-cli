@@ -20,7 +20,7 @@ The project that is being released must meet following requirements
 
 - Must have a `CHANGELOG.md` file in the root directory
 - `CHANGELOG.md` must follow the standard outlined in [changelog-parser](https://www.npmjs.com/package/changelog-parser)
-- If using the `--npm` flag, git tags must be prefixed with a `v` e.g. `v1.11.2`
+- Git tags that are created will be [annotated](https://git-scm.com/book/en/v2/Git-Basics-Tagging#_annotated_tags) and prefixed with a `v` e.g. `v1.11.2`
 
 ## Usage
 

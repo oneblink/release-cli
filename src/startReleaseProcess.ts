@@ -8,11 +8,13 @@ import parseChangelog from 'changelog-parser'
 import { main as packageDiffSummary } from 'package-diff-summary'
 import semver from 'semver'
 import ora from 'ora'
+import { readPackageUpAsync } from 'read-pkg-up'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
 
 const UNRELEASED_VERSION_INDEX = 0
+const GIT_TAG_PREFIX = 'v'
 
 type ParseChangelogVersion = {
   title: string
@@ -46,28 +48,26 @@ async function wrapWithLoading<T>(
 async function updateChangelog({
   nextSemverVersion,
   cwd,
-  gitTagPrefix,
 }: {
   nextSemverVersion: string
   cwd: string
-  gitTagPrefix: string
 }) {
   const changelogPath = path.join(cwd, 'CHANGELOG.md')
   const parsedChangelog = await wrapWithLoading(
     {
-      startText: 'Parsing CHANGELOG.md',
-      failText: 'Failed to parsed CHANGELOG.md',
+      startText: `Parsing ${changelogPath}`,
+      failText: `Failed to parsed ${changelogPath}`,
     },
     async (spinner) => {
       const parsedChangelog = (await parseChangelog(
         changelogPath
       )) as ParsedChangelog
-      spinner.succeed('Parsed CHANGELOG.md')
+      spinner.succeed(`Parsed ${changelogPath}`)
       return parsedChangelog
     }
   )
 
-  const dependencies = await wrapWithLoading(
+  const dependenciesChangelogEntry = await wrapWithLoading(
     {
       startText:
         'Checking if the "Dependencies" heading should be added to CHANGELOG.md',
@@ -84,32 +84,44 @@ async function updateChangelog({
         throw new Error('"Unreleased" heading in CHANGELOG.md does not exist')
       }
 
-      const dependenciesHeading = '### Dependencies'
+      const dependenciesChangelogHeading = '### Dependencies'
 
-      if (unreleasedVersion.body.includes(dependenciesHeading)) {
+      if (unreleasedVersion.body.includes(dependenciesChangelogHeading)) {
         spinner.warn(
-          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as it already exists under the "Unreleased" heading'
+          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as it already exists under the "Unreleased" heading. It is recommended to allow this release process to insert instead of adding them as dependencies change.'
         )
         return ''
       }
 
       const lastVersion = parsedChangelog.versions[1]
       if (!lastVersion) {
-        spinner.warn(
-          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as this is the first release according to the CHANGELOG.md'
+        spinner.info(
+          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as this is the first release according to the CHANGELOG.md.'
         )
         return ''
       }
 
-      const result = await packageDiffSummary({
-        cwd,
-        previousVersion: `${gitTagPrefix}${lastVersion.version}`,
-      })
-      const dependencies = result.trim()
+      let dependenciesChangelogEntries = ''
+      const lastGitTag = `${GIT_TAG_PREFIX}${lastVersion.version}`
+      try {
+        const result = await packageDiffSummary({
+          cwd,
+          previousVersion: lastGitTag,
+        })
+        dependenciesChangelogEntries = result.trim()
+      } catch (error) {
+        if (error.message.includes(`git show ${lastGitTag}:package.json`)) {
+          spinner.warn(
+            `Skipping inserting the "Dependencies" heading in CHANGELOG.md as it relies on the last release's git tag having a "v" prefix (i.e. "${lastGitTag}")`
+          )
+          return ''
+        }
+        throw error
+      }
 
-      if (!dependencies) {
+      if (!dependenciesChangelogEntries) {
         spinner.info(
-          `Skipping inserting the "Dependencies" heading in CHANGELOG.md as there were not dependency changes since the last release (${lastVersion.version})`
+          `Skipping inserting the "Dependencies" heading in CHANGELOG.md as there were no dependency changes since the last release (${lastVersion.version})`
         )
         return ''
       }
@@ -117,9 +129,9 @@ async function updateChangelog({
       spinner.succeed('"Dependencies" heading will be added to CHANGELOG.md')
 
       return `
-${dependenciesHeading}
+${dependenciesChangelogHeading}
 
-${dependencies}
+${dependenciesChangelogEntries}
 `
     }
   )
@@ -157,7 +169,7 @@ ${parsedChangelog.versions
 
 ${body}
 
-${dependencies}
+${dependenciesChangelogEntry}
 `
     }
 
@@ -181,23 +193,46 @@ ${body}
   )
 }
 
+async function checkIfNPMPackageVersionShouldBeUpdated(
+  cwd: string
+): Promise<boolean> {
+  const result = await readPackageUpAsync({
+    cwd,
+  })
+
+  return !!result?.packageJson
+}
+
+async function executeCommand(command: string, args: string[], cwd: string) {
+  await wrapWithLoading(
+    {
+      startText: `Running "${command} ${args.join(' ')}"`,
+      failText: `Failed to run "${command} ${args.join(' ')}"`,
+    },
+    async (spinner) => {
+      await execa(command, args, {
+        cwd,
+      })
+      spinner.succeed(`Ran "${command} ${args.join(' ')}"`)
+    }
+  )
+}
+
 export default async function startReleaseProcess({
   nextVersion,
   cwd,
   git,
-  npm,
 }: {
   nextVersion: string | null
   git: boolean
-  npm: boolean
   cwd: string
-}) {
+}): Promise<void> {
   const nextSemverVersion = semver.valid(nextVersion)
   if (!nextSemverVersion) {
     throw new Error('Next version is not valid semver')
   }
 
-  const gitTagPrefix = npm ? 'v' : ''
+  const npm = await checkIfNPMPackageVersionShouldBeUpdated(cwd)
 
   const preReleaseComponents = semver.prerelease(nextSemverVersion)
   if (preReleaseComponents && preReleaseComponents[0]) {
@@ -207,64 +242,40 @@ export default async function startReleaseProcess({
     await updateChangelog({
       nextSemverVersion,
       cwd,
-      gitTagPrefix,
     })
   }
 
   if (npm) {
-    await wrapWithLoading(
-      {
-        startText: 'Running "npm version"',
-        failText: 'Failed to run "npm version"',
-      },
-      async (spinner) => {
-        await execa(
-          'npm',
-          ['version', nextSemverVersion, '--no-git-tag-version'],
-          {
-            cwd,
-          }
-        )
-        spinner.succeed('Ran "npm version"')
-      }
+    await executeCommand(
+      'npm',
+      ['version', nextSemverVersion, '--no-git-tag-version'],
+      cwd
     )
   }
 
-  await wrapWithLoading(
-    {
-      startText: 'Committing release changes using git',
-      failText: 'Failed to commit release changes using git',
-    },
-    async (spinner) => {
-      if (!git) {
-        spinner.info(`Skipping committing release changes using git`)
-        return
-      }
+  if (!git) {
+    const text = `Skipping committing release changes using git`
+    ora(text).start().info(text)
+    return
+  }
 
-      await execa('git', ['add', '-A'], {
-        cwd,
-      })
-      await execa(
-        'git',
-        ['commit', '--message', `[RELEASE] ${nextSemverVersion}`],
-        {
-          cwd,
-        }
-      )
-      await execa('git', ['push'], {
-        cwd,
-      })
-
-      const tag = `${gitTagPrefix}${nextSemverVersion}`
-      await execa('git', ['tag', tag], {
-        cwd,
-      })
-      await execa('git', ['push', '--tags'], {
-        cwd,
-      })
-      spinner.succeed(
-        `Committed release changes using git and created tag: "${tag}"`
-      )
-    }
+  await executeCommand('git', ['add', '-A'], cwd)
+  await executeCommand(
+    'git',
+    ['commit', '--message', `[RELEASE] ${nextSemverVersion}`],
+    cwd
   )
+  await executeCommand('git', ['push'], cwd)
+  await executeCommand(
+    'git',
+    [
+      'tag',
+      '-a',
+      `${GIT_TAG_PREFIX}${nextSemverVersion}`,
+      '-m',
+      `[RELEASE] ${nextSemverVersion}`,
+    ],
+    cwd
+  )
+  await executeCommand('git', ['push', '--tags'], cwd)
 }
