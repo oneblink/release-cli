@@ -8,7 +8,7 @@ import parseChangelog from 'changelog-parser'
 import { main as packageDiffSummary } from 'package-diff-summary'
 import semver from 'semver'
 import ora from 'ora'
-import { readPackageUpAsync } from 'read-pkg-up'
+import readPkgUp from 'read-pkg-up'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -196,7 +196,7 @@ ${body}
 async function checkIfNPMPackageVersionShouldBeUpdated(
   cwd: string
 ): Promise<boolean> {
-  const result = await readPackageUpAsync({
+  const result = await readPkgUp({
     cwd,
   })
 

@@ -6,7 +6,7 @@ import updateNotifier from 'update-notifier'
 import meow from 'meow'
 import enquirer from 'enquirer'
 
-import startReleaseProcess from './startReleaseProcess.js'
+import startReleaseProcess from './startReleaseProcess'
 
 const cli = meow(
   `

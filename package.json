@@ -17,7 +17,7 @@
     "ora": "^5.4.0",
     "package-diff-summary": "^3.0.1",
     "prettier": "^2.2.1",
-    "read-pkg-up": "^8.0.0",
+    "read-pkg-up": "^7.0.1",
     "semver": "^7.3.5",
     "update-notifier": "^5.1.0"
   },
@@ -43,7 +43,6 @@
     "node": ">=14",
     "npm": ">=6"
   },
-  "exports": "./dist/startReleaseProcess.js",
   "files": [
     "dist"
   ],
@@ -52,6 +51,7 @@
     "release"
   ],
   "license": "GPL-3.0-only",
+  "main": "./dist/startReleaseProcess.js",
   "publishConfig": {
     "access": "public"
   },
@@ -66,6 +66,5 @@
     "prepare": "npm run build",
     "pretest": "npm run eslint",
     "test": "npm run jest"
-  },
-  "type": "module"
+  }
 }
