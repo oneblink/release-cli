@@ -6,10 +6,10 @@ This project adheres to [GitHub Flow](https://guides.github.com/introduction/flo
 
 ## Release Process
 
-1. Checkout `master`
+1. Checkout `main`
 
    ```
-   git checkout master
+   git checkout main
    ```
 
 1. Get the latest code
