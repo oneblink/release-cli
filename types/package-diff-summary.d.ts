@@ -1,3 +1,6 @@
 declare module 'package-diff-summary' {
-  export function main({ previousVersion: string, cwd: string }): string
+  export function main(options: {
+    previousVersion: string
+    cwd: string
+  }): string
 }
