@@ -7,13 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2022-08-26
+
 ### Moved
 
-`patch-package` to deps
+- `patch-package` to deps
 
 ### Added
 
-`patches` dir to `files` in `package.json` file
+- `patches` dir to `files` in `package.json` file
+- `changelog-parser` to `bundleDependencies`
 
 ## [1.1.0] - 2022-08-26
 
