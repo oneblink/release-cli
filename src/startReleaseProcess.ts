@@ -110,7 +110,11 @@ async function updateChangelog({
         })
         dependenciesChangelogEntries = result.trim()
       } catch (error) {
-        if (error.message.includes(`git show ${lastGitTag}:package.json`)) {
+        if (
+          (error as Error).message.includes(
+            `git show ${lastGitTag}:package.json`
+          )
+        ) {
           spinner.warn(
             `Skipping inserting the "Dependencies" heading in CHANGELOG.md as it relies on the last release's git tag having a "v" prefix (i.e. "${lastGitTag}")`
           )
