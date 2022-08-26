@@ -22,6 +22,10 @@
     "semver": "^7.3.5",
     "update-notifier": "^5.1.0"
   },
+  "bundleDependencies": [
+    "patch-package",
+    "changelog-parser"
+  ],
   "devDependencies": {
     "@types/changelog-parser": "^2.7.1",
     "@types/jest": "^26.0.22",
