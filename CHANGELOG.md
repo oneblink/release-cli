@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2022-08-26
+
 ### Patched
 
 - `changelog-parser` to use `\n` as line endings instead of detecting based on platform
