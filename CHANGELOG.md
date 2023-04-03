@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - release name prompt to add name of release to changelog (can also be set via `--name="Release Name"` flag)
 - `--no-name` flag to allow skipping adding a release name to the changelog
 
+### Changed
+
+- **[BREAKING]** required NodeJS 18
+
 ## [1.2.0] - 2022-08-26
 
 ### Moved
