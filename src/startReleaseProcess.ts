@@ -275,22 +275,16 @@ export default async function startReleaseProcess({
     return
   }
 
+  const message = `[RELEASE] ${nextSemverVersion}${
+    releaseName ? ` - ${releaseName}` : ''
+  }`
+
   await executeCommand('git', ['add', '-A'], cwd)
-  await executeCommand(
-    'git',
-    ['commit', '--message', `[RELEASE] ${nextSemverVersion}`],
-    cwd
-  )
+  await executeCommand('git', ['commit', '--message', message], cwd)
   await executeCommand('git', ['push'], cwd)
   await executeCommand(
     'git',
-    [
-      'tag',
-      '-a',
-      `${GIT_TAG_PREFIX}${nextSemverVersion}`,
-      '-m',
-      `[RELEASE] ${nextSemverVersion}`,
-    ],
+    ['tag', '-a', `${GIT_TAG_PREFIX}${nextSemverVersion}`, '-m', message],
     cwd
   )
   await executeCommand('git', ['push', '--tags'], cwd)
