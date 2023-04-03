@@ -10,12 +10,18 @@ import startReleaseProcess from './startReleaseProcess'
 
 const cli = meow(
   `
-oneblink-release [next-version] [--no-git] [--cwd path]
+oneblink-release [next-version] [--no-git] [--name] [--no-name] [--cwd path]
 
   next-version ..... The next version, will prompt for this if not supplied,
                      must be a valid semver number.
 
     --no-git ....... Skip committing changes and creating an annotated git tag.
+
+    --name ......... Skip the question to enter a name for the release by passing
+                     a release name as a flag.
+
+    --no-name ...... Skip the question to enter a name for the release. Use
+                     option when running a release for an open source repository.
 
     --cwd .......... Directory of the code base to release relative to the
                      current working directory, defaults to the current
@@ -24,6 +30,8 @@ oneblink-release [next-version] [--no-git] [--cwd path]
 Examples
 
   oneblink-release
+  oneblink-release --no-name
+  oneblink-release --name="Inappropriate Release Name"
   oneblink-release 1.1.1
   oneblink-release 1.1.1 --cwd ../path/to/code
   oneblink-release 1.1.1-uat.1 --no-git
@@ -44,6 +52,9 @@ Examples
         type: 'boolean',
         default: true,
       },
+      name: {
+        type: 'string',
+      },
       cwd: {
         type: 'string',
         default: process.cwd(),
@@ -51,6 +62,26 @@ Examples
     },
   }
 )
+
+async function getReleaseName(name: unknown) {
+  if (typeof name === 'string' && name) {
+    return name
+  }
+  if (typeof name === 'boolean' && !name) {
+    return undefined
+  }
+
+  const { releaseName } = await enquirer.prompt<{
+    releaseName: string
+  }>([
+    {
+      type: 'input',
+      message: 'Release name? i.e. JIRA release',
+      name: 'releaseName',
+    },
+  ])
+  return releaseName
+}
 
 updateNotifier({
   // @ts-expect-error difference in types between packages
@@ -75,9 +106,12 @@ async function run(): Promise<void> {
     input = nextVersion
   }
 
+  const releaseName = await getReleaseName(cli.flags.name)
+
   await startReleaseProcess({
     nextVersion: input,
     git: cli.flags.git,
+    releaseName,
     cwd: path.resolve(process.cwd(), cli.flags.cwd),
   })
 }

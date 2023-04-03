@@ -48,9 +48,11 @@ async function wrapWithLoading<T>(
 async function updateChangelog({
   nextSemverVersion,
   cwd,
+  releaseName,
 }: {
   nextSemverVersion: string
   cwd: string
+  releaseName: string | undefined
 }) {
   const changelogPath = path.join(cwd, 'CHANGELOG.md')
   const parsedChangelog = await wrapWithLoading(
@@ -140,9 +142,9 @@ ${dependenciesChangelogEntries}
     }
   )
 
-  const nextReleaseTitle = `[${nextSemverVersion}] - ${new Date()
+  const nextReleaseTitle = `[${nextSemverVersion}] (${new Date()
     .toISOString()
-    .substring(0, 10)}`
+    .substring(0, 10)})${releaseName ? ` ${releaseName}` : ''}`
   await wrapWithLoading(
     {
       startText: `Updating CHANGELOG.md with next release (${nextReleaseTitle})`,
@@ -226,9 +228,11 @@ export default async function startReleaseProcess({
   nextVersion,
   cwd,
   git,
+  releaseName,
 }: {
   nextVersion: string | null
   git: boolean
+  releaseName: string | undefined
   cwd: string
 }): Promise<void> {
   const nextSemverVersion = semver.valid(nextVersion)
@@ -246,6 +250,7 @@ export default async function startReleaseProcess({
     await updateChangelog({
       nextSemverVersion,
       cwd,
+      releaseName,
     })
   }
 
