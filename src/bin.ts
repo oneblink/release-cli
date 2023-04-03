@@ -6,7 +6,7 @@ import updateNotifier from 'update-notifier'
 import meow from 'meow'
 import enquirer from 'enquirer'
 
-import startReleaseProcess from './startReleaseProcess'
+import startReleaseProcess from './startReleaseProcess.js'
 
 const cli = meow(
   `
@@ -37,6 +37,7 @@ Examples
   oneblink-release 1.1.1-uat.1 --no-git
 `,
   {
+    importMeta: import.meta,
     flags: {
       help: {
         type: 'boolean',

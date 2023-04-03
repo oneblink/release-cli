@@ -2,13 +2,13 @@ import fs from 'fs'
 import path from 'path'
 import util from 'util'
 
-import execa from 'execa'
+import { execa } from 'execa'
 import prettier from 'prettier'
 import parseChangelog from 'changelog-parser'
 import { main as packageDiffSummary } from 'package-diff-summary'
 import semver from 'semver'
-import ora from 'ora'
-import readPkgUp from 'read-pkg-up'
+import ora, { Ora } from 'ora'
+import { readPackageUp } from 'read-pkg-up'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -30,7 +30,7 @@ type ParsedChangelog = {
 
 async function wrapWithLoading<T>(
   { startText, failText }: { startText: string; failText: string },
-  fn: (spinner: ora.Ora) => Promise<T>
+  fn: (spinner: Ora) => Promise<T>
 ): Promise<T> {
   const spinner = ora(startText).start()
   try {
@@ -153,7 +153,7 @@ ${dependenciesChangelogEntries}
     async (spinner) => {
       let prettierOptions = {}
       try {
-        const s = await readFileAsync(path.join(cwd, '.prettierrc'), 'UTF-8')
+        const s = await readFileAsync(path.join(cwd, '.prettierrc'), 'utf-8')
         prettierOptions = JSON.parse(s)
       } catch (error) {
         // ignore errors attempting to find prettier configuration
@@ -191,7 +191,7 @@ ${body}
           parser: 'markdown',
         }
       )
-      await writeFileAsync(changelogPath, changelog, 'UTF-8')
+      await writeFileAsync(changelogPath, changelog, 'utf-8')
       spinner.succeed(
         `Updated CHANGELOG.md with next release (${nextReleaseTitle})`
       )
@@ -202,7 +202,7 @@ ${body}
 async function checkIfNPMPackageVersionShouldBeUpdated(
   cwd: string
 ): Promise<boolean> {
-  const result = await readPkgUp({
+  const result = await readPackageUp({
     cwd,
   })
 
