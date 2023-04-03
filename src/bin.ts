@@ -7,6 +7,7 @@ import meow from 'meow'
 import enquirer from 'enquirer'
 
 import startReleaseProcess from './startReleaseProcess.js'
+import semver from 'semver'
 
 const cli = meow(
   `
@@ -64,7 +65,16 @@ Examples
   }
 )
 
-async function getReleaseName(name: unknown) {
+async function getReleaseName({
+  name,
+  preRelease,
+}: {
+  name: unknown
+  preRelease: string | undefined
+}) {
+  if (preRelease) {
+    return
+  }
   if (typeof name === 'string' && name) {
     return name
   }
@@ -102,14 +112,31 @@ async function run(): Promise<void> {
         type: 'input',
         message: 'Next version? e.g. "1.2.3" or "1.2.3-beta.1"',
         name: 'nextVersion',
+        required: true,
+        validate: (value) => {
+          const nextSemverVersion = semver.valid(value)
+          if (!nextSemverVersion) {
+            return 'Next version must be valid semver'
+          }
+          return true
+        },
       },
     ])
     input = nextVersion
   }
 
-  const releaseName = await getReleaseName(cli.flags.name)
+  const preReleaseComponents = semver.prerelease(input)
+  const preRelease =
+    typeof preReleaseComponents?.[0] === 'string'
+      ? preReleaseComponents[0]
+      : undefined
+  const releaseName = await getReleaseName({
+    name: cli.flags.name,
+    preRelease,
+  })
 
   await startReleaseProcess({
+    preRelease,
     nextVersion: input,
     git: cli.flags.git,
     releaseName,
