@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- changelog title not being supported by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) which breaks the [antonyurchenko/git-release](https://github.com/anton-yurchenko/git-release) GitHub Action
+
 ## [2.0.0] (2023-04-03)
 
 ### Added

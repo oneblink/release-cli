@@ -142,9 +142,15 @@ ${dependenciesChangelogEntries}
     }
   )
 
-  const nextReleaseTitle = `[${nextSemverVersion}] (${new Date()
+  const nextReleaseTitle = `[${nextSemverVersion}] - ${new Date()
     .toISOString()
-    .substring(0, 10)})${releaseName ? ` ${releaseName}` : ''}`
+    .substring(0, 10)}`
+  const releaseNameSubtitle = releaseName
+    ? `
+
+##### Release Name: ${releaseName}`
+    : ''
+
   await wrapWithLoading(
     {
       startText: `Updating CHANGELOG.md with next release (${nextReleaseTitle})`,
@@ -171,7 +177,7 @@ ${parsedChangelog.versions
       return `
 ## ${title}
 
-## ${nextReleaseTitle}
+## ${nextReleaseTitle}${releaseNameSubtitle}
 
 ${body}
 
@@ -226,11 +232,13 @@ async function executeCommand(command: string, args: string[], cwd: string) {
 
 export default async function startReleaseProcess({
   nextVersion,
+  preRelease,
   cwd,
   git,
   releaseName,
 }: {
-  nextVersion: string | null
+  nextVersion: string
+  preRelease: string | undefined
   git: boolean
   releaseName: string | undefined
   cwd: string
@@ -242,9 +250,8 @@ export default async function startReleaseProcess({
 
   const npm = await checkIfNPMPackageVersionShouldBeUpdated(cwd)
 
-  const preReleaseComponents = semver.prerelease(nextSemverVersion)
-  if (preReleaseComponents && preReleaseComponents[0]) {
-    const text = `Skipping changelog updates for "${preReleaseComponents[0]}" release`
+  if (preRelease) {
+    const text = `Skipping changelog updates for "${preRelease}" release`
     ora(text).start().info(text)
   } else {
     await updateChangelog({
