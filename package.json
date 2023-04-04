@@ -1,7 +1,7 @@
 {
   "name": "@oneblink/release-cli",
   "description": "Used internally by OneBlink to release code bases quickly and consistently",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "author": "OneBlink <developers@oneblink> (https://github.com/oneblink)",
   "bin": {
     "oneblink-release": "dist/bin.js"
@@ -72,7 +72,9 @@
     "prepare": "npm run build",
     "pretest": "npm run eslint",
     "test": "npm run jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "prerelease": "npm run build",
+    "release": "./dist/bin.js --no-name --cwd ."
   },
   "type": "module"
 }
