@@ -165,7 +165,7 @@ ${dependenciesChangelogEntries}
         // ignore errors attempting to find prettier configuration
       }
 
-      const changelog = prettier.format(
+      const changelog = await prettier.format(
         `
 # ${parsedChangelog.title}
 
