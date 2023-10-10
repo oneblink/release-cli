@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "changelog-parser": "^3.0.1",
-    "enquirer": "^2.3.6",
+    "enquirer": "^2.4.1",
     "execa": "^7.1.1",
     "meow": "^11.0.0",
     "ora": "^6.3.0",
