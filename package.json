@@ -13,7 +13,7 @@
     "changelog-parser": "^3.0.1",
     "enquirer": "^2.4.1",
     "execa": "^8.0.1",
-    "meow": "^11.0.0",
+    "meow": "^12.1.1",
     "ora": "^6.3.0",
     "package-diff-summary": "^3.0.1",
     "patch-package": "^6.5.1",

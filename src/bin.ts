@@ -43,12 +43,12 @@ Examples
       help: {
         type: 'boolean',
         default: false,
-        alias: 'h',
+        shortFlag: 'h',
       },
       version: {
         type: 'boolean',
         default: false,
-        alias: 'v',
+        shortFlag: 'v',
       },
       git: {
         type: 'boolean',
