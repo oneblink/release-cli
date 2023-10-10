@@ -18,7 +18,7 @@
     "package-diff-summary": "^3.0.1",
     "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
-    "read-pkg-up": "^9.1.0",
+    "read-pkg-up": "^10.1.0",
     "semver": "^7.3.8",
     "update-notifier": "^6.0.2"
   },
