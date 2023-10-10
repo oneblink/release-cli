@@ -10,7 +10,7 @@
     "url": "https://github.com/oneblink/release-cli/issues"
   },
   "dependencies": {
-    "changelog-parser": "^2.8.0",
+    "changelog-parser": "^3.0.1",
     "enquirer": "^2.3.6",
     "execa": "^7.1.1",
     "meow": "^11.0.0",
@@ -26,7 +26,7 @@
     "changelog-parser"
   ],
   "devDependencies": {
-    "@types/changelog-parser": "^2.8.1",
+    "@types/changelog-parser": "^2.8.2",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.15.11",
     "@types/semver": "^7.3.13",
