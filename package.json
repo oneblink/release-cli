@@ -19,7 +19,7 @@
     "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
     "read-pkg-up": "^10.1.0",
-    "semver": "^7.3.8",
+    "semver": "^7.5.4",
     "update-notifier": "^6.0.2"
   },
   "bundleDependencies": [
@@ -29,7 +29,7 @@
     "@types/changelog-parser": "^2.8.2",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.15.11",
-    "@types/semver": "^7.3.13",
+    "@types/semver": "^7.5.3",
     "@types/update-notifier": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
