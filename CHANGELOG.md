@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2023-10-17
+
+### Dependencies
+
+- update [changelog-parser](https://www.npmjs.com/package/changelog-parser) to [3.0.1](https://github.com/ungoldman/changelog-parser/releases/tag/v3.0.1) (from [2.8.0](https://github.com/ungoldman/changelog-parser/releases/tag/v2.8.0))
+
+- update [enquirer](https://www.npmjs.com/package/enquirer) to [2.4.1](https://github.com/enquirer/enquirer/blob/master/CHANGELOG.md) (from [2.3.6](https://github.com/enquirer/enquirer/blob/master/CHANGELOG.md))
+
+- update [execa](https://www.npmjs.com/package/execa) to [8.0.1](https://github.com/sindresorhus/execa/releases/tag/v8.0.1) (from [7.1.1](https://github.com/sindresorhus/execa/releases/tag/v7.1.1))
+
+- update [meow](https://www.npmjs.com/package/meow) to [12.1.1](https://github.com/sindresorhus/meow/releases/tag/v12.1.1) (from [11.0.0](https://github.com/sindresorhus/meow/releases/tag/v11.0.0))
+
+- update [ora](https://www.npmjs.com/package/ora) to [7.0.1](https://github.com/sindresorhus/ora/releases/tag/v7.0.1) (from [6.3.0](https://github.com/sindresorhus/ora/releases/tag/v6.3.0))
+
+- update [patch-package](https://www.npmjs.com/package/patch-package) to [8.0.0](https://github.com/ds300/patch-package/releases/tag/v8.0.0) (from [6.5.1](https://github.com/ds300/patch-package/releases/tag/v6.5.1))
+
+- update [prettier](https://www.npmjs.com/package/prettier) to [3.0.3](https://github.com/prettier/prettier/releases/tag/3.0.3) (from [2.8.7](https://github.com/prettier/prettier/releases/tag/2.8.7))
+
+- update [read-pkg-up](https://www.npmjs.com/package/read-pkg-up) to [10.1.0](https://github.com/sindresorhus/read-pkg-up/releases/tag/v10.1.0) (from [9.1.0](https://github.com/sindresorhus/read-pkg-up/releases/tag/v9.1.0))
+
+- update [semver](https://www.npmjs.com/package/semver) to [7.5.4](https://github.com/npm/node-semver/releases/tag/v7.5.4) (from [7.3.8](https://github.com/npm/node-semver/releases/tag/v7.3.8))
+
 ## [2.0.3] - 2023-04-04
 
 ### Fixed
