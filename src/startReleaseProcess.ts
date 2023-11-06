@@ -5,10 +5,10 @@ import util from 'util'
 import { execa } from 'execa'
 import prettier from 'prettier'
 import parseChangelog from 'changelog-parser'
-import { main as packageDiffSummary } from 'package-diff-summary'
+import { main as packageDiffSummary } from './package-diff-summary/index.js'
 import semver from 'semver'
 import ora, { Ora } from 'ora'
-import { readPackageUp } from 'read-pkg-up'
+import { readPackageUp } from 'read-package-up'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -30,7 +30,7 @@ type ParsedChangelog = {
 
 async function wrapWithLoading<T>(
   { startText, failText }: { startText: string; failText: string },
-  fn: (spinner: Ora) => Promise<T>
+  fn: (spinner: Ora) => Promise<T>,
 ): Promise<T> {
   const spinner = ora(startText).start()
   try {
@@ -62,11 +62,11 @@ async function updateChangelog({
     },
     async (spinner) => {
       const parsedChangelog = (await parseChangelog(
-        changelogPath
+        changelogPath,
       )) as ParsedChangelog
       spinner.succeed(`Parsed ${changelogPath}`)
       return parsedChangelog
-    }
+    },
   )
 
   const dependenciesChangelogEntry = await wrapWithLoading(
@@ -90,7 +90,7 @@ async function updateChangelog({
 
       if (unreleasedVersion.body.includes(dependenciesChangelogHeading)) {
         spinner.warn(
-          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as it already exists under the "Unreleased" heading. It is recommended to allow this release process to insert instead of adding them as dependencies change.'
+          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as it already exists under the "Unreleased" heading. It is recommended to allow this release process to insert instead of adding them as dependencies change.',
         )
         return ''
       }
@@ -98,7 +98,7 @@ async function updateChangelog({
       const lastVersion = parsedChangelog.versions[1]
       if (!lastVersion) {
         spinner.info(
-          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as this is the first release according to the CHANGELOG.md.'
+          'Skipping inserting the "Dependencies" heading in CHANGELOG.md as this is the first release according to the CHANGELOG.md.',
         )
         return ''
       }
@@ -110,15 +110,17 @@ async function updateChangelog({
           cwd,
           previousVersion: lastGitTag,
         })
-        dependenciesChangelogEntries = result.trim()
+        if (result) {
+          dependenciesChangelogEntries = result.trim()
+        }
       } catch (error) {
         if (
           (error as Error).message.includes(
-            `git show ${lastGitTag}:package.json`
+            `git show ${lastGitTag}:package.json`,
           )
         ) {
           spinner.warn(
-            `Skipping inserting the "Dependencies" heading in CHANGELOG.md as it relies on the last release's git tag having a "v" prefix (i.e. "${lastGitTag}")`
+            `Skipping inserting the "Dependencies" heading in CHANGELOG.md as it relies on the last release's git tag having a "v" prefix (i.e. "${lastGitTag}")`,
           )
           return ''
         }
@@ -127,7 +129,7 @@ async function updateChangelog({
 
       if (!dependenciesChangelogEntries) {
         spinner.info(
-          `Skipping inserting the "Dependencies" heading in CHANGELOG.md as there were no dependency changes since the last release (${lastVersion.version})`
+          `Skipping inserting the "Dependencies" heading in CHANGELOG.md as there were no dependency changes since the last release (${lastVersion.version})`,
         )
         return ''
       }
@@ -139,7 +141,7 @@ ${dependenciesChangelogHeading}
 
 ${dependenciesChangelogEntries}
 `
-    }
+    },
   )
 
   const nextReleaseTitle = `[${nextSemverVersion}] - ${new Date()
@@ -195,18 +197,18 @@ ${body}
         {
           ...prettierOptions,
           parser: 'markdown',
-        }
+        },
       )
       await writeFileAsync(changelogPath, changelog, 'utf-8')
       spinner.succeed(
-        `Updated CHANGELOG.md with next release (${nextReleaseTitle})`
+        `Updated CHANGELOG.md with next release (${nextReleaseTitle})`,
       )
-    }
+    },
   )
 }
 
 async function checkIfNPMPackageVersionShouldBeUpdated(
-  cwd: string
+  cwd: string,
 ): Promise<boolean> {
   const result = await readPackageUp({
     cwd,
@@ -226,7 +228,7 @@ async function executeCommand(command: string, args: string[], cwd: string) {
         cwd,
       })
       spinner.succeed(`Ran "${command} ${args.join(' ')}"`)
-    }
+    },
   )
 }
 
@@ -265,7 +267,7 @@ export default async function startReleaseProcess({
     await executeCommand(
       'npm',
       ['version', nextSemverVersion, '--no-git-tag-version'],
-      cwd
+      cwd,
     )
   }
 
@@ -285,7 +287,7 @@ export default async function startReleaseProcess({
   await executeCommand(
     'git',
     ['tag', '-a', `${GIT_TAG_PREFIX}${nextSemverVersion}`, '-m', message],
-    cwd
+    cwd,
   )
   await executeCommand('git', ['push', '--tags'], cwd)
 }
