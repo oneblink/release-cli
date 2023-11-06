@@ -62,7 +62,7 @@ Examples
         default: process.cwd(),
       },
     },
-  }
+  },
 )
 
 async function getReleaseName({
