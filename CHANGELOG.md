@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2023-11-07
+
+### Dependencies
+
+- no longer depend upon [package-diff-summary](https://www.npmjs.com/package/package-diff-summary)
+
+- no longer depend upon [read-pkg-up](https://www.npmjs.com/package/read-pkg-up)
+
+- update [update-notifier](https://www.npmjs.com/package/update-notifier) to [7.0.0](https://github.com/yeoman/update-notifier/releases/tag/v7.0.0) (from [6.0.2](https://github.com/yeoman/update-notifier/releases/tag/v6.0.2))
+
+- depend upon [@octokit/rest](https://www.npmjs.com/package/@octokit/rest) [20.0.2](https://github.com/octokit/rest.js/releases/tag/v20.0.2)
+
+- depend upon [dependency-diff](https://www.npmjs.com/package/dependency-diff) 1.0.4
+
+- depend upon [github-url-from-git](https://www.npmjs.com/package/github-url-from-git) [1.5.0](https://github.com/visionmedia/node-github-url-from-git/blob/master/CHANGELOG.md)
+
+- depend upon [read-package-up](https://www.npmjs.com/package/read-package-up) [11.0.0](https://github.com/sindresorhus/read-package-up/releases/tag/v11.0.0)
+
 ## [2.1.0] - 2023-10-17
 
 ### Dependencies
