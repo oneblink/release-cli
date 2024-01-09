@@ -186,8 +186,6 @@ Last Commit: ${lastCommitMessage}`),
 
       switch (type) {
         case 'NODE_JS': {
-          await executeCommand('npm', ['install'], repositoryWorkingDirectory)
-
           // NodeJS repositories that are not being published to NPM
           // don't need to follow semantic versioning as no user ever
           // gets the option to choose a version. We will simply increment
@@ -226,7 +224,6 @@ Last Commit: ${lastCommitMessage}`),
           break
         }
         case 'NPM': {
-          await executeCommand('npm', ['install'], repositoryWorkingDirectory)
           const { nextVersion } = await promptForNextVersion({
             cwd: repositoryWorkingDirectory,
           })
