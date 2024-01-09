@@ -6,10 +6,11 @@ import prettier from 'prettier'
 import { main as packageDiffSummary } from './package-diff-summary/index.js'
 import semver from 'semver'
 import ora from 'ora'
-import { readPackageUp } from 'read-package-up'
+import { RepositoryType } from './getRepositoryType.js'
 import wrapWithLoading from './wrapWithLoading.js'
 import executeCommand from './executeCommand.js'
 import parseChangelogWithLoading from './parseChangelogWithLoading.js'
+import { updateNugetVersion } from './nuget.js'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -21,10 +22,12 @@ async function updateChangelog({
   nextSemverVersion,
   cwd,
   releaseName,
+  type,
 }: {
   nextSemverVersion: string
   cwd: string
   releaseName: string | undefined
+  type: RepositoryType
 }) {
   const { parsedChangelog, changelogPath } =
     await parseChangelogWithLoading(cwd)
@@ -37,6 +40,15 @@ async function updateChangelog({
         'Failed to check if the "Dependencies" heading should be added to CHANGELOG.md',
     },
     async (spinner) => {
+      switch (type.type) {
+        case 'NUGET': {
+          spinner.info(
+            `Evaluating "Dependencies" is not supported for ${type.type} repositories.`,
+          )
+          return ''
+        }
+      }
+
       const unreleasedVersion =
         parsedChangelog.versions[UNRELEASED_VERSION_INDEX]
       if (
@@ -167,35 +179,25 @@ ${body}
   )
 }
 
-async function checkIfNPMPackageVersionShouldBeUpdated(
-  cwd: string,
-): Promise<boolean> {
-  const result = await readPackageUp({
-    cwd,
-  })
-
-  return !!result?.packageJson
-}
-
 export default async function startRepositoryRelease({
   nextVersion,
   preRelease,
   cwd,
   git,
   releaseName,
+  type,
 }: {
   nextVersion: string
   preRelease: string | undefined
   git: boolean
   releaseName: string | undefined
   cwd: string
+  type: RepositoryType
 }): Promise<void> {
   const nextSemverVersion = semver.valid(nextVersion)
   if (!nextSemverVersion) {
     throw new Error('Next version is not valid semver')
   }
-
-  const npm = await checkIfNPMPackageVersionShouldBeUpdated(cwd)
 
   if (preRelease) {
     const text = `Skipping changelog updates for "${preRelease}" release`
@@ -205,15 +207,28 @@ export default async function startRepositoryRelease({
       nextSemverVersion,
       cwd,
       releaseName,
+      type,
     })
   }
 
-  if (npm) {
-    await executeCommand(
-      'npm',
-      ['version', nextSemverVersion, '--no-git-tag-version'],
-      cwd,
-    )
+  switch (type.type) {
+    case 'NODE_JS':
+    case 'NPM': {
+      await executeCommand(
+        'npm',
+        ['version', nextSemverVersion, '--no-git-tag-version'],
+        cwd,
+      )
+      break
+    }
+    case 'NUGET': {
+      await updateNugetVersion({
+        relativeProjectFile: type.relativeProjectFile,
+        nextVersion,
+        cwd,
+      })
+      break
+    }
   }
 
   if (!git) {

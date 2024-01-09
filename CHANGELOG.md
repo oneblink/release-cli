@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `oneblink-release product` command
 - `oneblink-release repository` command (this replaces the old `oneblink-release` command)
+- support for nuget repositories
 
 ### Removed
 

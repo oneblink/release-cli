@@ -9,6 +9,9 @@
   "bugs": {
     "url": "https://github.com/oneblink/release-cli/issues"
   },
+  "bundleDependencies": [
+    "changelog-parser"
+  ],
   "dependencies": {
     "@octokit/rest": "^20.0.2",
     "boxen": "^7.1.1",
@@ -26,9 +29,6 @@
     "semver": "^7.5.4",
     "update-notifier": "^7.0.0"
   },
-  "bundleDependencies": [
-    "changelog-parser"
-  ],
   "devDependencies": {
     "@types/changelog-parser": "^2.8.3",
     "@types/github-url-from-git": "^1.5.2",
@@ -74,12 +74,13 @@
     "build": "tsc --build",
     "eslint": "eslint --fix --cache --quiet ./src",
     "jest": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --silent",
-    "prepare": "npm run build",
-    "pretest": "npm run eslint",
-    "test": "npm run jest",
     "postinstall": "patch-package",
+    "prepare": "npm run build",
     "prerelease": "npm run build",
-    "release": "./dist/bin.js --no-name --cwd ."
+    "pretest": "npm run eslint",
+    "release": "./dist/bin.js --no-name --cwd .",
+    "test": "npm run jest",
+    "typescript": "tsc --noEmit"
   },
   "type": "module"
 }

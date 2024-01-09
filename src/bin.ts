@@ -11,6 +11,7 @@ import semver from 'semver'
 import promptForNextVersion from './promptForNextVersion.js'
 import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
+import getRepositoryType from './getRepositoryType.js'
 
 const cli = meow(
   `
@@ -128,8 +129,9 @@ async function run(): Promise<void> {
     case 'repository': {
       let input = cli.input[1]
       const cwd = path.resolve(process.cwd(), cli.flags.cwd)
+      const type = await getRepositoryType({ cwd })
       if (!semver.valid(input)) {
-        const { nextVersion } = await promptForNextVersion({ cwd })
+        const { nextVersion } = await promptForNextVersion({ cwd, type })
         input = nextVersion
       }
 
@@ -149,6 +151,7 @@ async function run(): Promise<void> {
         git: cli.flags.git,
         releaseName,
         cwd,
+        type,
       })
       break
     }
