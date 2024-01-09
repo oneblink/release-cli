@@ -26,12 +26,8 @@ the information required to perform the release.`,
 
 ${chalk.bold('Examples')}
 
-  oneblink-release repository
-  oneblink-release repository --no-name
-  oneblink-release repository --name="Inappropriate Release Name"
-  oneblink-release repository 1.1.1
-  oneblink-release repository 1.1.1 --cwd ../path/to/code
-  oneblink-release repository 1.1.1-uat.1 --no-git
+  oneblink-release product
+  oneblink-release product --name="Inappropriate Release Name"
 
 ${chalk.bold.blue(
   'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path]',
