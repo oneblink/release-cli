@@ -46,7 +46,7 @@ ${chalk.grey('Release a single repository.')}
     --no-name ...... Skip the question to enter a name for the release. Use
                      option when running a release for an open source repository.
 
-    --cwd .......... Directory of the code base to release relative to the
+    --cwd .......... Directory of the repository to release relative to the
                      current working directory, defaults to the current
                      working directory.
 

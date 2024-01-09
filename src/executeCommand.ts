@@ -7,17 +7,19 @@ export default async function executeCommand(
   cwd: string,
 ) {
   const log = `"${command} ${args.join(' ')}"`
-  await wrapWithLoading(
+  return await wrapWithLoading(
     {
       startText: `Running ${log}`,
       failText: `Failed to run ${log}`,
     },
     async (spinner) => {
-      await execa(command, args, {
+      const result = await execa(command, args, {
         cwd,
       })
 
       spinner.succeed(`Ran ${log}`)
+
+      return result
     },
   )
 }

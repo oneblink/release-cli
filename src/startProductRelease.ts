@@ -8,89 +8,88 @@ import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 import promptForNextVersion from './promptForNextVersion.js'
 import boxen from 'boxen'
 import chalk from 'chalk'
-import ora from 'ora'
 import wrapWithLoading from './wrapWithLoading.js'
 import { readPackageUp } from 'read-package-up'
 import startReleaseProcess from './startRepositoryRelease.js'
 
-const gitCloneCodeBases: Array<{
-  codeBaseName: string
+const gitCloneRepositories: Array<{
+  repositoryName: string
   type: 'NPM' | 'NODE_JS' | 'NUGET'
 }> = [
   {
-    codeBaseName: 'apps',
+    repositoryName: 'apps',
     type: 'NPM',
   },
   {
-    codeBaseName: 'apps-react',
+    repositoryName: 'apps-react',
     type: 'NPM',
   },
   {
-    codeBaseName: 'cli',
+    repositoryName: 'cli',
     type: 'NPM',
   },
   {
-    codeBaseName: 'forms-cdn',
+    repositoryName: 'forms-cdn',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-api',
+    repositoryName: 'product-api',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-approvals-api',
+    repositoryName: 'product-approvals-api',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-approvals-client',
+    repositoryName: 'product-approvals-client',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-cognito-hosted-login-css',
+    repositoryName: 'product-cognito-hosted-login-css',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-console',
+    repositoryName: 'product-console',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-form-store-client',
+    repositoryName: 'product-form-store-client',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-forms-lambda-at-edge-authorisation',
+    repositoryName: 'product-forms-lambda-at-edge-authorisation',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-forms-renderer',
+    repositoryName: 'product-forms-renderer',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-infrastructure',
+    repositoryName: 'product-infrastructure',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-pdf',
+    repositoryName: 'product-pdf',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-s3-submission-events',
+    repositoryName: 'product-s3-submission-events',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'product-volunteers-client',
+    repositoryName: 'product-volunteers-client',
     type: 'NODE_JS',
   },
   {
-    codeBaseName: 'sdk-core-js',
+    repositoryName: 'sdk-core-js',
     type: 'NPM',
   },
   {
-    codeBaseName: 'sdk-dotnet',
+    repositoryName: 'sdk-dotnet',
     type: 'NUGET',
   },
   {
-    codeBaseName: 'sdk-node-js',
+    repositoryName: 'sdk-node-js',
     type: 'NPM',
   },
 ]
@@ -103,57 +102,65 @@ export default async function startProductRelease({
   console.log('Beginning Product release process for:', releaseName)
 
   const deploymentRequiredUrls: string[] = []
-  for (const { codeBaseName, type } of gitCloneCodeBases) {
-    const codeBaseWorkingDirectory = await wrapWithLoading(
+  for (const { repositoryName, type } of gitCloneRepositories) {
+    const repositoryWorkingDirectory = await wrapWithLoading(
       {
-        startText: `Creating temporary directory to clone "${codeBaseName}"`,
-        failText: `Failed to create temporary directory to clone "${codeBaseName}"`,
+        startText: `Creating temporary directory to clone "${repositoryName}"`,
+        failText: `Failed to create temporary directory to clone "${repositoryName}"`,
       },
       async (spinner) => {
-        const directory = await mkdtemp(join(tmpdir(), codeBaseName))
+        const directory = await mkdtemp(join(tmpdir(), repositoryName))
         spinner.succeed(
-          `Created temporary directory to clone "${codeBaseName}"`,
+          `Created temporary directory to clone "${repositoryName}"`,
         )
         return directory
       },
     )
 
     try {
-      const cloneUrl = `git@github.com:oneblink/${codeBaseName}.git`
+      const cloneUrl = `git@github.com:oneblink/${repositoryName}.git`
       await executeCommand(
         'git',
-        ['clone', cloneUrl, codeBaseWorkingDirectory],
+        ['clone', cloneUrl, repositoryWorkingDirectory],
         '.',
       )
 
-      // Check if code base needs releasing
+      // Check if repository needs releasing
       const { parsedChangelog } = await parseChangelogWithLoading(
-        codeBaseWorkingDirectory,
+        repositoryWorkingDirectory,
       )
       const unreleasedVersion = parsedChangelog.versions.find((version) =>
         version.title.toLowerCase().includes('unreleased'),
       )
       if (!unreleasedVersion) {
-        await continuePromptWithWarning(`"${codeBaseName}" CHANGELOG.md does not contain an "Unreleased" section
+        await continuePromptWithWarning(`"${repositoryName}" CHANGELOG.md does not contain an "Unreleased" section
 
 You need to checkout "${cloneUrl}" to fix this before trying again.`)
         continue
       }
 
-      const unreleasedChangelogEntries = unreleasedVersion.body.trim()
-      if (!unreleasedChangelogEntries) {
-        ora(
-          `Skipping "${codeBaseName}" as CHANGELOG.md does not contain any entries in the "Unreleased" section.`,
-        )
-          .start()
-          .info()
-        continue
-      }
-
+      const { stdout: lastCommitMessage } = await executeCommand(
+        'git',
+        ['log', '-1', '--pretty=oneline'],
+        repositoryWorkingDirectory,
+      )
+      const unreleasedChangelogEntries =
+        unreleasedVersion.body.trim() ||
+        chalk.italic('There are no entries under the "Unreleased" heading.')
       console.log(
-        boxen(chalk.blue(unreleasedChangelogEntries), {
-          padding: 1,
-        }),
+        boxen(
+          chalk.blue(`${unreleasedChangelogEntries}
+          
+Last Commit: ${lastCommitMessage}`),
+          {
+            title: 'Unreleased Entries',
+            padding: 1,
+            margin: {
+              top: 1,
+              bottom: 1,
+            },
+          },
+        ),
       )
 
       const { isReleasing } = await enquirer.prompt<{
@@ -161,10 +168,10 @@ You need to checkout "${cloneUrl}" to fix this before trying again.`)
       }>({
         type: 'select',
         name: 'isReleasing',
-        message: `Would you like to release "${codeBaseName}"? See unreleased section from changelog above to decide.`,
+        message: `Would you like to release "${repositoryName}"? See unreleased section from changelog above to decide.`,
         choices: [
           {
-            message: `No! "${codeBaseName}" does not need to be released.`,
+            message: `No! "${repositoryName}" does not need to be released.`,
             name: 'no',
           },
           {
@@ -179,14 +186,14 @@ You need to checkout "${cloneUrl}" to fix this before trying again.`)
 
       switch (type) {
         case 'NODE_JS': {
-          await executeCommand('npm', ['install'], codeBaseWorkingDirectory)
+          await executeCommand('npm', ['install'], repositoryWorkingDirectory)
 
-          // NodeJS code bases that are not being published to NPM
+          // NodeJS repositories that are not being published to NPM
           // don't need to follow semantic versioning as no user ever
           // gets the option to choose a version. We will simply increment
           // the existing version by a minor version.
           const result = await readPackageUp({
-            cwd: codeBaseWorkingDirectory,
+            cwd: repositoryWorkingDirectory,
           })
           const currentVersion = semver.valid(result?.packageJson.version)
           let nextVersion = ''
@@ -201,7 +208,7 @@ You need to checkout "${cloneUrl}" to fix this before trying again.`)
           // increment, we will ask for the next one.
           if (!nextVersion) {
             const promptResult = await promptForNextVersion({
-              cwd: codeBaseWorkingDirectory,
+              cwd: repositoryWorkingDirectory,
             })
             nextVersion = promptResult.nextVersion
           }
@@ -211,24 +218,24 @@ You need to checkout "${cloneUrl}" to fix this before trying again.`)
             preRelease: undefined,
             git: true,
             releaseName,
-            cwd: codeBaseWorkingDirectory,
+            cwd: repositoryWorkingDirectory,
           })
           deploymentRequiredUrls.push(
-            `https://github.com/oneblink/${codeBaseName}/actions`,
+            `https://github.com/oneblink/${repositoryName}/actions`,
           )
           break
         }
         case 'NPM': {
-          await executeCommand('npm', ['install'], codeBaseWorkingDirectory)
+          await executeCommand('npm', ['install'], repositoryWorkingDirectory)
           const { nextVersion } = await promptForNextVersion({
-            cwd: codeBaseWorkingDirectory,
+            cwd: repositoryWorkingDirectory,
           })
           await startReleaseProcess({
             nextVersion,
             preRelease: undefined,
             git: true,
             releaseName: undefined,
-            cwd: codeBaseWorkingDirectory,
+            cwd: repositoryWorkingDirectory,
           })
           break
         }
@@ -242,15 +249,15 @@ You need to checkout "${cloneUrl}" and run the release process manually.`)
     } finally {
       await wrapWithLoading(
         {
-          startText: `Removing temporary directory for "${codeBaseName}"`,
-          failText: `Failed to remove temporary directory for "${codeBaseName}"`,
+          startText: `Removing temporary directory for "${repositoryName}"`,
+          failText: `Failed to remove temporary directory for "${repositoryName}"`,
         },
         async (spinner) => {
-          await rm(codeBaseWorkingDirectory, {
+          await rm(repositoryWorkingDirectory, {
             recursive: true,
             force: true,
           })
-          spinner.succeed(`Removed temporary directory for "${codeBaseName}"`)
+          spinner.succeed(`Removed temporary directory for "${repositoryName}"`)
         },
       )
     }

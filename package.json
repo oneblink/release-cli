@@ -1,6 +1,6 @@
 {
   "name": "@oneblink/release-cli",
-  "description": "Used internally by OneBlink to release code bases quickly and consistently",
+  "description": "Used internally by OneBlink to release repositories quickly and consistently",
   "version": "2.1.1",
   "author": "OneBlink <developers@oneblink> (https://github.com/oneblink)",
   "bin": {
