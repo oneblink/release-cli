@@ -4,14 +4,40 @@ import path from 'path'
 
 import updateNotifier from 'update-notifier'
 import meow from 'meow'
-import enquirer from 'enquirer'
+import chalk from 'chalk'
 
-import startReleaseProcess from './startReleaseProcess.js'
+import startRepositoryRelease from './startRepositoryRelease.js'
 import semver from 'semver'
+import promptForNextVersion from './promptForNextVersion.js'
+import startProductRelease from './startProductRelease.js'
+import promptForReleaseName from './promptForReleaseName.js'
 
 const cli = meow(
   `
-oneblink-release [next-version] [--no-git] [--name] [--no-name] [--cwd path]
+${chalk.bold.blue('oneblink-release product [--name]')}
+
+${chalk.grey(
+  `Release each repository in the Product. Each repository will offer prompts for
+the information required to perform the release.`,
+)}
+
+  --name ......... Skip the question to enter a name for the release by passing
+                   a release name as a flag.
+
+${chalk.bold('Examples')}
+
+  oneblink-release repository
+  oneblink-release repository --no-name
+  oneblink-release repository --name="Inappropriate Release Name"
+  oneblink-release repository 1.1.1
+  oneblink-release repository 1.1.1 --cwd ../path/to/code
+  oneblink-release repository 1.1.1-uat.1 --no-git
+
+${chalk.bold.blue(
+  'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path]',
+)}
+
+${chalk.grey('Release a single repository.')}
 
   next-version ..... The next version, will prompt for this if not supplied,
                      must be a valid semver number.
@@ -28,14 +54,14 @@ oneblink-release [next-version] [--no-git] [--name] [--no-name] [--cwd path]
                      current working directory, defaults to the current
                      working directory.
 
-Examples
+${chalk.bold('Examples')}
 
-  oneblink-release
-  oneblink-release --no-name
-  oneblink-release --name="Inappropriate Release Name"
-  oneblink-release 1.1.1
-  oneblink-release 1.1.1 --cwd ../path/to/code
-  oneblink-release 1.1.1-uat.1 --no-git
+  oneblink-release repository
+  oneblink-release repository --no-name
+  oneblink-release repository --name="Inappropriate Release Name"
+  oneblink-release repository 1.1.1
+  oneblink-release repository 1.1.1 --cwd ../path/to/code
+  oneblink-release repository 1.1.1-uat.1 --no-git
 `,
   {
     importMeta: import.meta,
@@ -82,16 +108,7 @@ async function getReleaseName({
     return undefined
   }
 
-  const { releaseName } = await enquirer.prompt<{
-    releaseName: string
-  }>([
-    {
-      type: 'input',
-      message: 'Release name? i.e. JIRA release',
-      name: 'releaseName',
-    },
-  ])
-  return releaseName
+  return await promptForReleaseName()
 }
 
 updateNotifier({
@@ -105,41 +122,48 @@ run().catch((error) => {
 })
 
 async function run(): Promise<void> {
-  let input = cli.input[0]
-  if (!input) {
-    const { nextVersion } = await enquirer.prompt<{ nextVersion: string }>([
-      {
-        type: 'input',
-        message: 'Next version? e.g. "1.2.3" or "1.2.3-beta.1"',
-        name: 'nextVersion',
-        required: true,
-        validate: (value) => {
-          const nextSemverVersion = semver.valid(value)
-          if (!nextSemverVersion) {
-            return 'Next version must be valid semver'
-          }
-          return true
-        },
-      },
-    ])
-    input = nextVersion
+  const command = cli.input[0]
+  switch (command) {
+    case 'product': {
+      const releaseName = cli.flags.name || (await promptForReleaseName())
+      await startProductRelease({ releaseName })
+      break
+    }
+    case 'repository': {
+      let input = cli.input[1]
+      const cwd = path.resolve(process.cwd(), cli.flags.cwd)
+      if (!semver.valid(input)) {
+        const { nextVersion } = await promptForNextVersion({ cwd })
+        input = nextVersion
+      }
+
+      const preReleaseComponents = semver.prerelease(input)
+      const preRelease =
+        typeof preReleaseComponents?.[0] === 'string'
+          ? preReleaseComponents[0]
+          : undefined
+      const releaseName = await getReleaseName({
+        name: cli.flags.name,
+        preRelease,
+      })
+
+      await startRepositoryRelease({
+        preRelease,
+        nextVersion: input,
+        git: cli.flags.git,
+        releaseName,
+        cwd,
+      })
+      break
+    }
+    case undefined: {
+      cli.showHelp()
+      break
+    }
+    default: {
+      throw new Error(
+        `"${command}" is not a valid command. Please use the "--help" flag to view available commands.`,
+      )
+    }
   }
-
-  const preReleaseComponents = semver.prerelease(input)
-  const preRelease =
-    typeof preReleaseComponents?.[0] === 'string'
-      ? preReleaseComponents[0]
-      : undefined
-  const releaseName = await getReleaseName({
-    name: cli.flags.name,
-    preRelease,
-  })
-
-  await startReleaseProcess({
-    preRelease,
-    nextVersion: input,
-    git: cli.flags.git,
-    releaseName,
-    cwd: path.resolve(process.cwd(), cli.flags.cwd),
-  })
 }

@@ -2,48 +2,20 @@ import fs from 'fs'
 import path from 'path'
 import util from 'util'
 
-import { execa } from 'execa'
 import prettier from 'prettier'
-import parseChangelog from 'changelog-parser'
 import { main as packageDiffSummary } from './package-diff-summary/index.js'
 import semver from 'semver'
-import ora, { Ora } from 'ora'
+import ora from 'ora'
 import { readPackageUp } from 'read-package-up'
+import wrapWithLoading from './wrapWithLoading.js'
+import executeCommand from './executeCommand.js'
+import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
 
 const UNRELEASED_VERSION_INDEX = 0
 const GIT_TAG_PREFIX = 'v'
-
-type ParseChangelogVersion = {
-  title: string
-  version: string
-  body: string
-}
-
-type ParsedChangelog = {
-  title: string
-  description?: string
-  versions: ParseChangelogVersion[]
-}
-
-async function wrapWithLoading<T>(
-  { startText, failText }: { startText: string; failText: string },
-  fn: (spinner: Ora) => Promise<T>,
-): Promise<T> {
-  const spinner = ora(startText).start()
-  try {
-    const t = await fn(spinner)
-    if (spinner.isSpinning) {
-      spinner.stop()
-    }
-    return t
-  } catch (error) {
-    spinner.fail(failText)
-    throw error
-  }
-}
 
 async function updateChangelog({
   nextSemverVersion,
@@ -54,20 +26,8 @@ async function updateChangelog({
   cwd: string
   releaseName: string | undefined
 }) {
-  const changelogPath = path.join(cwd, 'CHANGELOG.md')
-  const parsedChangelog = await wrapWithLoading(
-    {
-      startText: `Parsing ${changelogPath}`,
-      failText: `Failed to parsed ${changelogPath}`,
-    },
-    async (spinner) => {
-      const parsedChangelog = (await parseChangelog(
-        changelogPath,
-      )) as ParsedChangelog
-      spinner.succeed(`Parsed ${changelogPath}`)
-      return parsedChangelog
-    },
-  )
+  const { parsedChangelog, changelogPath } =
+    await parseChangelogWithLoading(cwd)
 
   const dependenciesChangelogEntry = await wrapWithLoading(
     {
@@ -217,22 +177,7 @@ async function checkIfNPMPackageVersionShouldBeUpdated(
   return !!result?.packageJson
 }
 
-async function executeCommand(command: string, args: string[], cwd: string) {
-  await wrapWithLoading(
-    {
-      startText: `Running "${command} ${args.join(' ')}"`,
-      failText: `Failed to run "${command} ${args.join(' ')}"`,
-    },
-    async (spinner) => {
-      await execa(command, args, {
-        cwd,
-      })
-      spinner.succeed(`Ran "${command} ${args.join(' ')}"`)
-    },
-  )
-}
-
-export default async function startReleaseProcess({
+export default async function startRepositoryRelease({
   nextVersion,
   preRelease,
   cwd,

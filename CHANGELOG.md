@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `oneblink-release product` command
+- `oneblink-release repository` command (this replaces the old `oneblink-release` command)
+
+### Removed
+
+- **[BREAKING]** `oneblink-release` command
+
 ## [2.1.1] - 2023-11-07
 
 ### Dependencies
