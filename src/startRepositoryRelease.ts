@@ -4,13 +4,14 @@ import util from 'util'
 
 import prettier from 'prettier'
 import { main as packageDiffSummary } from './package-diff-summary/index.js'
-import semver from 'semver'
+import semver, { SemVer } from 'semver'
 import ora from 'ora'
 import { RepositoryType } from './getRepositoryType.js'
 import wrapWithLoading from './wrapWithLoading.js'
 import executeCommand from './executeCommand.js'
 import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 import { updateNugetVersion } from './nuget.js'
+import { getPreRelease } from './promptForNextVersion.js'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -24,7 +25,7 @@ async function updateChangelog({
   releaseName,
   type,
 }: {
-  nextSemverVersion: string
+  nextSemverVersion: SemVer
   cwd: string
   releaseName: string | undefined
   type: RepositoryType
@@ -116,7 +117,7 @@ ${dependenciesChangelogEntries}
     },
   )
 
-  const nextReleaseTitle = `[${nextSemverVersion}] - ${new Date()
+  const nextReleaseTitle = `[${nextSemverVersion.version}] - ${new Date()
     .toISOString()
     .substring(0, 10)}`
   const releaseNameSubtitle = releaseName
@@ -181,26 +182,26 @@ ${body}
 
 export default async function startRepositoryRelease({
   nextVersion,
-  preRelease,
   cwd,
   git,
   releaseName,
   type,
 }: {
   nextVersion: string
-  preRelease: string | undefined
   git: boolean
   releaseName: string | undefined
   cwd: string
   type: RepositoryType
 }): Promise<void> {
-  const nextSemverVersion = semver.valid(nextVersion)
+  const nextSemverVersion = semver.parse(nextVersion)
   if (!nextSemverVersion) {
     throw new Error('Next version is not valid semver')
   }
 
+  const preRelease = getPreRelease(nextVersion)
+
   if (preRelease) {
-    const text = `Skipping changelog updates for "${preRelease}" release`
+    const text = `Skipping changelog updates for "${preRelease.tag}" release`
     ora(text).start().info(text)
   } else {
     await updateChangelog({
@@ -216,7 +217,7 @@ export default async function startRepositoryRelease({
     case 'NPM': {
       await executeCommand(
         'npm',
-        ['version', nextSemverVersion, '--no-git-tag-version'],
+        ['version', nextSemverVersion.version, '--no-git-tag-version'],
         cwd,
       )
       break
@@ -224,7 +225,7 @@ export default async function startRepositoryRelease({
     case 'NUGET': {
       await updateNugetVersion({
         relativeProjectFile: type.relativeProjectFile,
-        nextVersion,
+        nextSemverVersion,
         cwd,
       })
       break
@@ -237,7 +238,7 @@ export default async function startRepositoryRelease({
     return
   }
 
-  const message = `[RELEASE] ${nextSemverVersion}${
+  const message = `[RELEASE] ${nextSemverVersion.version}${
     releaseName ? ` - ${releaseName}` : ''
   }`
 
@@ -246,7 +247,13 @@ export default async function startRepositoryRelease({
   await executeCommand('git', ['push'], cwd)
   await executeCommand(
     'git',
-    ['tag', '-a', `${GIT_TAG_PREFIX}${nextSemverVersion}`, '-m', message],
+    [
+      'tag',
+      '-a',
+      `${GIT_TAG_PREFIX}${nextSemverVersion.version}`,
+      '-m',
+      message,
+    ],
     cwd,
   )
   await executeCommand('git', ['push', '--tags'], cwd)

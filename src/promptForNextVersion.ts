@@ -28,12 +28,24 @@ async function getCurrentVersion({
   }
 }
 
+export function getPreRelease(nextVersion: string) {
+  const [tag, version] = semver.prerelease(nextVersion) || []
+  return typeof tag === 'string' && typeof version === 'number'
+    ? {
+        tag,
+        version,
+      }
+    : undefined
+}
+
 export default async function promptForNextVersion({
   type,
   cwd,
+  noPreRelease,
 }: {
   type: RepositoryType
   cwd: string
+  noPreRelease: boolean
 }): Promise<{
   nextVersion: string
 }> {
@@ -62,6 +74,11 @@ export default async function promptForNextVersion({
       if (!nextSemverVersion) {
         return 'Next version must be valid semver'
       }
+
+      if (noPreRelease && getPreRelease(value)) {
+        return 'Next version must not be a prerelease version'
+      }
+
       return true
     },
   })

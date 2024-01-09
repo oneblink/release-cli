@@ -213,13 +213,13 @@ Last Commit: ${lastCommitMessage}`),
             const promptResult = await promptForNextVersion({
               type: gitCloneRepository,
               cwd: repositoryWorkingDirectory,
+              noPreRelease: true,
             })
             nextVersion = promptResult.nextVersion
           }
 
           await startReleaseProcess({
             nextVersion,
-            preRelease: undefined,
             git: true,
             releaseName,
             cwd: repositoryWorkingDirectory,
@@ -235,10 +235,10 @@ Last Commit: ${lastCommitMessage}`),
           const { nextVersion } = await promptForNextVersion({
             type: gitCloneRepository,
             cwd: repositoryWorkingDirectory,
+            noPreRelease: true,
           })
           await startReleaseProcess({
             nextVersion,
-            preRelease: undefined,
             git: true,
             releaseName: undefined,
             cwd: repositoryWorkingDirectory,
