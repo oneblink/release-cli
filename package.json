@@ -1,6 +1,6 @@
 {
   "name": "@oneblink/release-cli",
-  "description": "Used internally by OneBlink to release code bases quickly and consistently",
+  "description": "Used internally by OneBlink to release repositories quickly and consistently",
   "version": "2.1.1",
   "author": "OneBlink <developers@oneblink> (https://github.com/oneblink)",
   "bin": {
@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@octokit/rest": "^20.0.2",
+    "boxen": "^7.1.1",
+    "chalk": "^5.3.0",
     "changelog-parser": "^3.0.1",
     "dependency-diff": "^1.0.4",
     "enquirer": "^2.4.1",

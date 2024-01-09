@@ -1,6 +1,6 @@
 # OneBlink Release CLI [![npm module](https://img.shields.io/npm/v/@oneblink/release-cli.svg)](https://www.npmjs.com/package/@oneblink/release-cli) [![tests](https://github.com/oneblink/release-cli/actions/workflows/test.yml/badge.svg)](https://github.com/oneblink/release-cli/actions)
 
-Used internally by OneBlink to release code bases quickly and consistently
+Used internally by OneBlink to release repositories quickly and consistently
 
 ## CLI Requirements
 
