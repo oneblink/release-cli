@@ -8,9 +8,10 @@ import chalk from 'chalk'
 
 import startRepositoryRelease from './startRepositoryRelease.js'
 import semver from 'semver'
-import promptForNextVersion from './promptForNextVersion.js'
+import promptForNextVersion, { getPreRelease } from './promptForNextVersion.js'
 import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
+import getRepositoryType from './getRepositoryType.js'
 
 const cli = meow(
   `
@@ -128,27 +129,28 @@ async function run(): Promise<void> {
     case 'repository': {
       let input = cli.input[1]
       const cwd = path.resolve(process.cwd(), cli.flags.cwd)
+      const type = await getRepositoryType({ cwd })
       if (!semver.valid(input)) {
-        const { nextVersion } = await promptForNextVersion({ cwd })
+        const { nextVersion } = await promptForNextVersion({
+          cwd,
+          type,
+          noPreRelease: false,
+        })
         input = nextVersion
       }
 
-      const preReleaseComponents = semver.prerelease(input)
-      const preRelease =
-        typeof preReleaseComponents?.[0] === 'string'
-          ? preReleaseComponents[0]
-          : undefined
+      const preRelease = getPreRelease(input)?.tag
       const releaseName = await getReleaseName({
         name: cli.flags.name,
         preRelease,
       })
 
       await startRepositoryRelease({
-        preRelease,
         nextVersion: input,
         git: cli.flags.git,
         releaseName,
         cwd,
+        type,
       })
       break
     }

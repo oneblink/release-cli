@@ -11,11 +11,14 @@ import chalk from 'chalk'
 import wrapWithLoading from './wrapWithLoading.js'
 import { readPackageUp } from 'read-package-up'
 import startReleaseProcess from './startRepositoryRelease.js'
+import { RepositoryType } from './getRepositoryType.js'
+import path from 'path'
 
-const gitCloneRepositories: Array<{
-  repositoryName: string
-  type: 'NPM' | 'NODE_JS' | 'NUGET'
-}> = [
+const gitCloneRepositories: Array<
+  {
+    repositoryName: string
+  } & RepositoryType
+> = [
   {
     repositoryName: 'apps',
     type: 'NPM',
@@ -87,6 +90,7 @@ const gitCloneRepositories: Array<{
   {
     repositoryName: 'sdk-dotnet',
     type: 'NUGET',
+    relativeProjectFile: path.join('OneBlink.SDK', 'OneBlink.SDK.csproj'),
   },
   {
     repositoryName: 'sdk-node-js',
@@ -102,7 +106,8 @@ export default async function startProductRelease({
   console.log('Beginning Product release process for:', releaseName)
 
   const deploymentRequiredUrls: string[] = []
-  for (const { repositoryName, type } of gitCloneRepositories) {
+  for (const gitCloneRepository of gitCloneRepositories) {
+    const { repositoryName } = gitCloneRepository
     const repositoryWorkingDirectory = await wrapWithLoading(
       {
         startText: `Creating temporary directory to clone "${repositoryName}"`,
@@ -184,7 +189,7 @@ Last Commit: ${lastCommitMessage}`),
         continue
       }
 
-      switch (type) {
+      switch (gitCloneRepository.type) {
         case 'NODE_JS': {
           // NodeJS repositories that are not being published to NPM
           // don't need to follow semantic versioning as no user ever
@@ -206,41 +211,40 @@ Last Commit: ${lastCommitMessage}`),
           // increment, we will ask for the next one.
           if (!nextVersion) {
             const promptResult = await promptForNextVersion({
+              type: gitCloneRepository,
               cwd: repositoryWorkingDirectory,
+              noPreRelease: true,
             })
             nextVersion = promptResult.nextVersion
           }
 
           await startReleaseProcess({
             nextVersion,
-            preRelease: undefined,
             git: true,
             releaseName,
             cwd: repositoryWorkingDirectory,
+            type: gitCloneRepository,
           })
           deploymentRequiredUrls.push(
             `https://github.com/oneblink/${repositoryName}/actions`,
           )
           break
         }
+        case 'NUGET':
         case 'NPM': {
           const { nextVersion } = await promptForNextVersion({
+            type: gitCloneRepository,
             cwd: repositoryWorkingDirectory,
+            noPreRelease: true,
           })
           await startReleaseProcess({
             nextVersion,
-            preRelease: undefined,
             git: true,
             releaseName: undefined,
             cwd: repositoryWorkingDirectory,
+            type: gitCloneRepository,
           })
           break
-        }
-        default: {
-          await continuePromptWithWarning(`"${type}" release type has not been catered for.
-
-You need to checkout "${cloneUrl}" and run the release process manually.`)
-          continue
         }
       }
     } finally {
