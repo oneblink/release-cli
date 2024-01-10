@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2024-01-10
+
 ### Added
 
 - `oneblink-release product` command
@@ -16,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **[BREAKING]** `oneblink-release` command
+
+### Dependencies
+
+- depend upon [boxen](https://www.npmjs.com/package/boxen) [7.1.1](https://github.com/sindresorhus/boxen/releases/tag/v7.1.1)
+
+- depend upon [chalk](https://www.npmjs.com/package/chalk) [5.3.0](https://github.com/chalk/chalk/releases/tag/v5.3.0)
 
 ## [2.1.1] - 2023-11-07
 
