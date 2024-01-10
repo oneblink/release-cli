@@ -1,62 +1,32 @@
 import enquirer from 'enquirer'
-import { readPackageUp } from 'read-package-up'
 import semver from 'semver'
-import { RepositoryType } from './getRepositoryType.js'
-import { getNugetVersion } from './nuget.js'
-
-async function getCurrentVersion({
-  type,
-  cwd,
-}: {
-  type: RepositoryType
-  cwd: string
-}): Promise<string | undefined> {
-  switch (type.type) {
-    case 'NODE_JS':
-    case 'NPM': {
-      const result = await readPackageUp({
-        cwd,
-      })
-      return result?.packageJson.version
-    }
-    case 'NUGET': {
-      return await getNugetVersion({
-        cwd,
-        relativeProjectFile: type.relativeProjectFile,
-      })
-    }
-  }
-}
-
-export function getPreRelease(nextVersion: string) {
-  const [tag, version] = semver.prerelease(nextVersion) || []
-  return typeof tag === 'string' && typeof version === 'number'
-    ? {
-        tag,
-        version,
-      }
-    : undefined
-}
+import getPreRelease from './getPreRelease.js'
+import { RepositoryPlugin } from './repositories-plugins/RepositoryPlugin.js'
 
 export default async function promptForNextVersion({
-  type,
-  cwd,
+  repositoryPlugin,
   noPreRelease,
 }: {
-  type: RepositoryType
-  cwd: string
+  repositoryPlugin: RepositoryPlugin
   noPreRelease: boolean
 }): Promise<{
   nextVersion: string
 }> {
-  const currentVersion = await getCurrentVersion({
-    type,
-    cwd,
-  })
-  if (!semver.valid(currentVersion)) {
+  const currentVersion = await repositoryPlugin.getCurrentVersion()
+
+  const currentSemverVersion = semver.parse(currentVersion)
+  if (!currentSemverVersion) {
     throw new Error(
-      `Could not determine current version for repository: ${cwd}`,
+      `Could not determine current version for ${repositoryPlugin.displayType} repository: ${repositoryPlugin.cwd}`,
     )
+  }
+
+  const autoIncrementVersion =
+    await repositoryPlugin.autoIncrementVersion?.(currentSemverVersion)
+  if (autoIncrementVersion) {
+    return {
+      nextVersion: autoIncrementVersion,
+    }
   }
 
   return await enquirer.prompt<{ nextVersion: string }>({
