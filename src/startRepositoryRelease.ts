@@ -3,15 +3,13 @@ import path from 'path'
 import util from 'util'
 
 import prettier from 'prettier'
-import { main as packageDiffSummary } from './package-diff-summary/index.js'
 import semver, { SemVer } from 'semver'
 import ora from 'ora'
-import { RepositoryType } from './getRepositoryType.js'
 import wrapWithLoading from './wrapWithLoading.js'
 import executeCommand from './executeCommand.js'
 import parseChangelogWithLoading from './parseChangelogWithLoading.js'
-import { updateNugetVersion } from './nuget.js'
-import { getPreRelease } from './promptForNextVersion.js'
+import getPreRelease from './getPreRelease.js'
+import { RepositoryPlugin } from './repositories-plugins/RepositoryPlugin.js'
 
 const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
@@ -21,17 +19,16 @@ const GIT_TAG_PREFIX = 'v'
 
 async function updateChangelog({
   nextSemverVersion,
-  cwd,
   releaseName,
-  type,
+  repositoryPlugin,
 }: {
   nextSemverVersion: SemVer
-  cwd: string
   releaseName: string | undefined
-  type: RepositoryType
+  repositoryPlugin: RepositoryPlugin
 }) {
-  const { parsedChangelog, changelogPath } =
-    await parseChangelogWithLoading(cwd)
+  const { parsedChangelog, changelogPath } = await parseChangelogWithLoading(
+    repositoryPlugin.cwd,
+  )
 
   const dependenciesChangelogEntry = await wrapWithLoading(
     {
@@ -41,13 +38,11 @@ async function updateChangelog({
         'Failed to check if the "Dependencies" heading should be added to CHANGELOG.md',
     },
     async (spinner) => {
-      switch (type.type) {
-        case 'NUGET': {
-          spinner.info(
-            `Evaluating "Dependencies" is not supported for ${type.type} repositories.`,
-          )
-          return ''
-        }
+      if (!repositoryPlugin.generateDependenciesChangelog) {
+        spinner.info(
+          `Evaluating "Dependencies" is not supported for ${repositoryPlugin.displayType} repositories.`,
+        )
+        return ''
       }
 
       const unreleasedVersion =
@@ -76,31 +71,18 @@ async function updateChangelog({
         return ''
       }
 
-      let dependenciesChangelogEntries = ''
       const lastGitTag = `${GIT_TAG_PREFIX}${lastVersion.version}`
-      try {
-        const result = await packageDiffSummary({
-          cwd,
+      const dependenciesChangelog =
+        await repositoryPlugin.generateDependenciesChangelog({
           previousVersion: lastGitTag,
         })
-        if (result) {
-          dependenciesChangelogEntries = result.trim()
-        }
-      } catch (error) {
-        if (
-          (error as Error).message.includes(
-            `git show ${lastGitTag}:package.json`,
-          )
-        ) {
-          spinner.warn(
-            `Skipping inserting the "Dependencies" heading in CHANGELOG.md as it relies on the last release's git tag having a "v" prefix (i.e. "${lastGitTag}")`,
-          )
-          return ''
-        }
-        throw error
+
+      if (dependenciesChangelog.result === 'WARNING') {
+        spinner.warn(dependenciesChangelog.message)
+        return ''
       }
 
-      if (!dependenciesChangelogEntries) {
+      if (!dependenciesChangelog.entries?.trim()) {
         spinner.info(
           `Skipping inserting the "Dependencies" heading in CHANGELOG.md as there were no dependency changes since the last release (${lastVersion.version})`,
         )
@@ -112,7 +94,7 @@ async function updateChangelog({
       return `
 ${dependenciesChangelogHeading}
 
-${dependenciesChangelogEntries}
+${dependenciesChangelog.entries}
 `
     },
   )
@@ -134,7 +116,10 @@ ${dependenciesChangelogEntries}
     async (spinner) => {
       let prettierOptions = {}
       try {
-        const s = await readFileAsync(path.join(cwd, '.prettierrc'), 'utf-8')
+        const s = await readFileAsync(
+          path.join(repositoryPlugin.cwd, '.prettierrc'),
+          'utf-8',
+        )
         prettierOptions = JSON.parse(s)
       } catch (error) {
         // ignore errors attempting to find prettier configuration
@@ -182,16 +167,14 @@ ${body}
 
 export default async function startRepositoryRelease({
   nextVersion,
-  cwd,
   git,
   releaseName,
-  type,
+  repositoryPlugin,
 }: {
   nextVersion: string
   git: boolean
   releaseName: string | undefined
-  cwd: string
-  type: RepositoryType
+  repositoryPlugin: RepositoryPlugin
 }): Promise<void> {
   const nextSemverVersion = semver.parse(nextVersion)
   if (!nextSemverVersion) {
@@ -206,31 +189,12 @@ export default async function startRepositoryRelease({
   } else {
     await updateChangelog({
       nextSemverVersion,
-      cwd,
       releaseName,
-      type,
+      repositoryPlugin,
     })
   }
 
-  switch (type.type) {
-    case 'NODE_JS':
-    case 'NPM': {
-      await executeCommand(
-        'npm',
-        ['version', nextSemverVersion.version, '--no-git-tag-version'],
-        cwd,
-      )
-      break
-    }
-    case 'NUGET': {
-      await updateNugetVersion({
-        relativeProjectFile: type.relativeProjectFile,
-        nextSemverVersion,
-        cwd,
-      })
-      break
-    }
-  }
+  await repositoryPlugin.incrementVersion(nextSemverVersion)
 
   if (!git) {
     const text = `Skipping committing release changes using git`
@@ -242,9 +206,13 @@ export default async function startRepositoryRelease({
     releaseName ? ` - ${releaseName}` : ''
   }`
 
-  await executeCommand('git', ['add', '-A'], cwd)
-  await executeCommand('git', ['commit', '--message', message], cwd)
-  await executeCommand('git', ['push'], cwd)
+  await executeCommand('git', ['add', '-A'], repositoryPlugin.cwd)
+  await executeCommand(
+    'git',
+    ['commit', '--message', message],
+    repositoryPlugin.cwd,
+  )
+  await executeCommand('git', ['push'], repositoryPlugin.cwd)
   await executeCommand(
     'git',
     [
@@ -254,7 +222,7 @@ export default async function startRepositoryRelease({
       '-m',
       message,
     ],
-    cwd,
+    repositoryPlugin.cwd,
   )
-  await executeCommand('git', ['push', '--tags'], cwd)
+  await executeCommand('git', ['push', '--tags'], repositoryPlugin.cwd)
 }

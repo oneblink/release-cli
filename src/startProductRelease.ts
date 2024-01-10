@@ -2,98 +2,118 @@ import { mkdtemp, rm } from 'fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import enquirer from 'enquirer'
-import semver from 'semver'
 import executeCommand from './executeCommand.js'
 import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 import promptForNextVersion from './promptForNextVersion.js'
 import boxen from 'boxen'
 import chalk from 'chalk'
 import wrapWithLoading from './wrapWithLoading.js'
-import { readPackageUp } from 'read-package-up'
-import startReleaseProcess from './startRepositoryRelease.js'
-import { RepositoryType } from './getRepositoryType.js'
+import startRepositoryRelease from './startRepositoryRelease.js'
 import path from 'path'
+import getRepositoryPlugin, {
+  RepositoryType,
+} from './repositories-plugins/plugins-factory.js'
 
 const gitCloneRepositories: Array<
   {
     repositoryName: string
+    isPublic: boolean
   } & RepositoryType
 > = [
   {
     repositoryName: 'apps',
     type: 'NPM',
+    isPublic: true,
   },
   {
     repositoryName: 'apps-react',
     type: 'NPM',
+    isPublic: true,
   },
   {
     repositoryName: 'cli',
+    isPublic: true,
     type: 'NPM',
   },
   {
     repositoryName: 'forms-cdn',
-    type: 'NODE_JS',
+    isPublic: true,
+    type: 'CDN_HOSTING',
   },
   {
     repositoryName: 'product-api',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-approvals-api',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-approvals-client',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-cognito-hosted-login-css',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-console',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-form-store-client',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-forms-lambda-at-edge-authorisation',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-forms-renderer',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-infrastructure',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-pdf',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-s3-submission-events',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'product-volunteers-client',
+    isPublic: false,
     type: 'NODE_JS',
   },
   {
     repositoryName: 'sdk-core-js',
+    isPublic: true,
     type: 'NPM',
   },
   {
     repositoryName: 'sdk-dotnet',
+    isPublic: true,
     type: 'NUGET',
     relativeProjectFile: path.join('OneBlink.SDK', 'OneBlink.SDK.csproj'),
   },
   {
     repositoryName: 'sdk-node-js',
+    isPublic: true,
     type: 'NPM',
   },
 ]
@@ -189,63 +209,27 @@ Last Commit: ${lastCommitMessage}`),
         continue
       }
 
-      switch (gitCloneRepository.type) {
-        case 'NODE_JS': {
-          // NodeJS repositories that are not being published to NPM
-          // don't need to follow semantic versioning as no user ever
-          // gets the option to choose a version. We will simply increment
-          // the existing version by a minor version.
-          const result = await readPackageUp({
-            cwd: repositoryWorkingDirectory,
-          })
-          const currentVersion = semver.valid(result?.packageJson.version)
-          let nextVersion = ''
-          if (currentVersion) {
-            const nextSemverVersion = semver.inc(currentVersion, 'minor')
-            if (nextSemverVersion) {
-              nextVersion = nextSemverVersion
-            }
-          }
+      const repositoryPlugin = await getRepositoryPlugin({
+        cwd: repositoryWorkingDirectory,
+        repositoryType: gitCloneRepository,
+      })
 
-          // If we can't find an existing version to
-          // increment, we will ask for the next one.
-          if (!nextVersion) {
-            const promptResult = await promptForNextVersion({
-              type: gitCloneRepository,
-              cwd: repositoryWorkingDirectory,
-              noPreRelease: true,
-            })
-            nextVersion = promptResult.nextVersion
-          }
+      const { nextVersion } = await promptForNextVersion({
+        repositoryPlugin,
+        noPreRelease: true,
+      })
 
-          await startReleaseProcess({
-            nextVersion,
-            git: true,
-            releaseName,
-            cwd: repositoryWorkingDirectory,
-            type: gitCloneRepository,
-          })
-          deploymentRequiredUrls.push(
-            `https://github.com/oneblink/${repositoryName}/actions`,
-          )
-          break
-        }
-        case 'NUGET':
-        case 'NPM': {
-          const { nextVersion } = await promptForNextVersion({
-            type: gitCloneRepository,
-            cwd: repositoryWorkingDirectory,
-            noPreRelease: true,
-          })
-          await startReleaseProcess({
-            nextVersion,
-            git: true,
-            releaseName: undefined,
-            cwd: repositoryWorkingDirectory,
-            type: gitCloneRepository,
-          })
-          break
-        }
+      await startRepositoryRelease({
+        nextVersion,
+        git: true,
+        releaseName: gitCloneRepository.isPublic ? undefined : releaseName,
+        repositoryPlugin,
+      })
+
+      if (repositoryPlugin.isDeploymentRequired) {
+        deploymentRequiredUrls.push(
+          `https://github.com/oneblink/${repositoryName}/actions`,
+        )
       }
     } finally {
       await wrapWithLoading(
