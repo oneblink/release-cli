@@ -1,5 +1,4 @@
 import fs from 'fs'
-import path from 'path'
 import util from 'util'
 
 import prettier from 'prettier'
@@ -11,7 +10,6 @@ import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 import getPreRelease from './getPreRelease.js'
 import { RepositoryPlugin } from './repositories-plugins/RepositoryPlugin.js'
 
-const readFileAsync = util.promisify(fs.readFile)
 const writeFileAsync = util.promisify(fs.writeFile)
 
 const UNRELEASED_VERSION_INDEX = 0
@@ -114,17 +112,6 @@ ${dependenciesChangelog.entries}
       failText: `Failed to update CHANGELOG.md with next release (${nextReleaseTitle})`,
     },
     async (spinner) => {
-      let prettierOptions = {}
-      try {
-        const s = await readFileAsync(
-          path.join(repositoryPlugin.cwd, '.prettierrc'),
-          'utf-8',
-        )
-        prettierOptions = JSON.parse(s)
-      } catch (error) {
-        // ignore errors attempting to find prettier configuration
-      }
-
       const changelog = await prettier.format(
         `
 # ${parsedChangelog.title}
@@ -153,7 +140,6 @@ ${body}
   })
   .join('')}`,
         {
-          ...prettierOptions,
           parser: 'markdown',
         },
       )
