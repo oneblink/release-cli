@@ -13,6 +13,7 @@ import getPreRelease from './getPreRelease.js'
 import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
+import startUpdateDependents from './startUpdateDependents.js'
 
 const cli = meow(
   `
@@ -60,6 +61,17 @@ ${chalk.bold('Examples')}
   oneblink-release repository 1.1.1
   oneblink-release repository 1.1.1 --cwd ../path/to/code
   oneblink-release repository 1.1.1-uat.1 --no-git
+
+${chalk.grey('Update all product code bases that depend on an NPM package.')}
+
+  --cwd .......... Directory of the repository that is the dependency relative
+                   to the current working directory, defaults to the current
+                   working directory.
+
+${chalk.bold('Examples')}
+
+  oneblink-release update-dependents
+  oneblink-release update-dependents --cwd ../path/to/code
 `,
   {
     importMeta: import.meta,
@@ -121,7 +133,15 @@ run().catch((error) => {
 
 async function run(): Promise<void> {
   const command = cli.input[0]
+
+  const cwd = path.resolve(process.cwd(), cli.flags.cwd)
   switch (command) {
+    case 'update-dependents': {
+      await startUpdateDependents({
+        cwd,
+      })
+      break
+    }
     case 'product': {
       const releaseName = cli.flags.name || (await promptForReleaseName())
       await startProductRelease({ releaseName })
@@ -130,7 +150,7 @@ async function run(): Promise<void> {
     case 'repository': {
       let input = cli.input[1]
       const repositoryPlugin = await getRepositoryPlugin({
-        cwd: path.resolve(process.cwd(), cli.flags.cwd),
+        cwd,
       })
       if (!semver.valid(input)) {
         const { nextVersion } = await promptForNextVersion({

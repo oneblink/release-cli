@@ -2,6 +2,7 @@ import { SemVer } from 'semver'
 
 export interface RepositoryPlugin {
   isDeploymentRequired: boolean
+  supportsDependencyUpdates: boolean
   displayType: string
   cwd: string
 
