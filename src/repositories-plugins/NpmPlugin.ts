@@ -7,6 +7,7 @@ import { RepositoryPlugin } from './RepositoryPlugin.js'
 export default class NpmPlugin implements RepositoryPlugin {
   displayType = 'NPM'
   isDeploymentRequired = false
+  supportsDependencyUpdates = true
   cwd: string
 
   constructor({ cwd }: { cwd: string }) {

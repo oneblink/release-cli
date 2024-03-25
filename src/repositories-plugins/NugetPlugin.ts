@@ -6,6 +6,7 @@ import { RepositoryPlugin } from './RepositoryPlugin.js'
 
 export default class NugetPlugin implements RepositoryPlugin {
   isDeploymentRequired = false
+  supportsDependencyUpdates = false
   displayType = 'Nuget'
 
   cwd: string
