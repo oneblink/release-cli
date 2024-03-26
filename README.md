@@ -4,8 +4,8 @@ Used internally by OneBlink to release repositories quickly and consistently
 
 ## CLI Requirements
 
-- [Node.js](https://nodejs.org/) 18.0 or newer
-- NPM 8.0 or newer
+- [Node.js](https://nodejs.org/) 20.0 or newer
+- NPM 10.0 or newer
 - See recommendation from [package-diff-summary](https://github.com/jokeyrhyme/package-diff-summary.js#github_oauth_token) regarding [GitHub API Rate Limiting](https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting)
 
 ## Installation
