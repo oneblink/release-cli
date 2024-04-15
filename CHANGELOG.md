@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **@oneblink/storage (NPM package)** to product repositories
+
 ## [3.1.0] - 2024-03-26
 
 ### Added

@@ -106,6 +106,12 @@ const productRepositories: Repository[] = [
     type: 'NODE_JS',
   },
   {
+    label: '@oneblink/storage (NPM package)',
+    repositoryName: 'storage',
+    isPublic: true,
+    type: 'NPM',
+  },
+  {
     label: '@oneblink/sdk-core (NPM package)',
     repositoryName: 'sdk-core-js',
     isPublic: true,
