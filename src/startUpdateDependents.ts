@@ -41,6 +41,24 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
     },
   })
 
+  const { isUpdatingTypes } = await enquirer.prompt<{
+    isUpdatingTypes: 'yes' | 'no'
+  }>({
+    type: 'select',
+    name: 'isUpdatingTypes',
+    message: `Would you like to update "@oneblink/types" as well?`,
+    choices: [
+      {
+        message: 'Yes, update @oneblink/types',
+        name: 'yes',
+      },
+      {
+        message: 'No! "@oneblink/types" does not need to be updated.',
+        name: 'no',
+      },
+    ],
+  })
+
   const createPullRequestUrls: string[] = []
 
   await enumerateProductRepositories(
@@ -102,6 +120,13 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
         ['checkout', '-b', jiraTicket],
         repositoryWorkingDirectory,
       )
+      if (isUpdatingTypes === 'yes') {
+        await executeCommand(
+          'npm',
+          ['install', '--package-lock-only', '-D', '@oneblink/types'],
+          repositoryWorkingDirectory,
+        )
+      }
       await executeCommand(
         'npm',
         [
