@@ -100,6 +100,12 @@ const productRepositories: Repository[] = [
     type: 'NODE_JS',
   },
   {
+    label: 'S3 Object Lambda',
+    repositoryName: 'product-s3-object-lambda',
+    isPublic: false,
+    type: 'NODE_JS',
+  },
+  {
     label: 'Volunteers Client',
     repositoryName: 'product-volunteers-client',
     isPublic: false,
