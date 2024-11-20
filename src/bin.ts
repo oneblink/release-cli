@@ -43,6 +43,8 @@ ${chalk.grey('Release a single repository.')}
 
     --no-git ....... Skip committing changes and creating an annotated git tag.
 
+    --increment .... Increment the version automatically using "major" | "minor" | "patch".
+
     --name ......... Skip the question to enter a name for the release by passing
                      a release name as a flag.
 
@@ -58,6 +60,9 @@ ${chalk.bold('Examples')}
   oneblink-release repository
   oneblink-release repository --no-name
   oneblink-release repository --name="Inappropriate Release Name"
+  oneblink-release repository --increment="major"
+  oneblink-release repository --increment="minor"
+  oneblink-release repository --increment="patch"
   oneblink-release repository 1.1.1
   oneblink-release repository 1.1.1 --cwd ../path/to/code
   oneblink-release repository 1.1.1-uat.1 --no-git
@@ -92,6 +97,10 @@ ${chalk.bold('Examples')}
       },
       name: {
         type: 'string',
+      },
+      increment: {
+        type: 'string',
+        choices: ['major', 'minor', 'patch'],
       },
       cwd: {
         type: 'string',
@@ -152,6 +161,17 @@ async function run(): Promise<void> {
       const repositoryPlugin = await getRepositoryPlugin({
         cwd,
       })
+      if (cli.flags.increment) {
+        const currentVersion = await repositoryPlugin.getCurrentVersion()
+        const currentSemverVersion = semver.parse(currentVersion)
+        const nextSemverVersion = currentSemverVersion?.inc(
+          cli.flags.increment as semver.ReleaseType,
+        )
+        if (nextSemverVersion) {
+          input = nextSemverVersion.version
+        }
+      }
+
       if (!semver.valid(input)) {
         const { nextVersion } = await promptForNextVersion({
           repositoryPlugin,
