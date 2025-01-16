@@ -1,5 +1,6 @@
 import fs from 'fs'
 import util from 'util'
+import { EOL } from 'os'
 
 import prettier from 'prettier'
 import semver, { SemVer } from 'semver'
@@ -143,7 +144,11 @@ ${body}
           parser: 'markdown',
         },
       )
-      await writeFileAsync(changelogPath, changelog, 'utf-8')
+      await writeFileAsync(
+        changelogPath,
+        changelog.replaceAll(EOL, '\n'),
+        'utf-8',
+      )
       spinner.succeed(
         `Updated CHANGELOG.md with next release (${nextReleaseTitle})`,
       )

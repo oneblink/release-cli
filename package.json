@@ -9,9 +9,6 @@
   "bugs": {
     "url": "https://github.com/oneblink/release-cli/issues"
   },
-  "bundleDependencies": [
-    "changelog-parser"
-  ],
   "dependencies": {
     "@octokit/rest": "^20.0.2",
     "boxen": "^7.1.1",
@@ -23,7 +20,6 @@
     "github-url-from-git": "^1.5.0",
     "meow": "^12.1.1",
     "ora": "^7.0.1",
-    "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
     "read-package-up": "^11.0.0",
     "semver": "^7.5.4",
@@ -75,7 +71,6 @@
     "build": "tsc --build",
     "eslint": "eslint --fix --cache --quiet ./src",
     "jest": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --silent",
-    "postinstall": "patch-package",
     "prepare": "npm run build",
     "prerelease": "npm run build",
     "pretest": "npm run eslint",
