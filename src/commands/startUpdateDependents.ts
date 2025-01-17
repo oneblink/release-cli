@@ -1,8 +1,8 @@
 import { readPackageUp } from 'read-package-up'
-import enumerateProductRepositories from './enumerateProductRepositories.js'
-import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
+import enumerateProductRepositories from '../repositories/enumerateProductRepositories.js'
+import getRepositoryPlugin from '../repositories-plugins/plugins-factory.js'
 import enquirer from 'enquirer'
-import executeCommand from './executeCommand.js'
+import executeCommand from '../terminal/executeCommand.js'
 import boxen from 'boxen'
 
 export default async function startUpdateDependents({ cwd }: { cwd: string }) {

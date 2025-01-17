@@ -6,14 +6,15 @@ import updateNotifier from 'update-notifier'
 import meow from 'meow'
 import chalk from 'chalk'
 
-import startRepositoryRelease from './startRepositoryRelease.js'
+import startRepositoryRelease from './commands/startRepositoryRelease.js'
 import semver from 'semver'
-import promptForNextVersion from './promptForNextVersion.js'
-import getPreRelease from './getPreRelease.js'
-import startProductRelease from './startProductRelease.js'
-import promptForReleaseName from './promptForReleaseName.js'
+import promptForNextVersion from './terminal/promptForNextVersion.js'
+import getPreRelease from './utils/getPreRelease.js'
+import startProductRelease from './commands/startProductRelease.js'
+import promptForReleaseName from './terminal/promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
-import startUpdateDependents from './startUpdateDependents.js'
+import startUpdateDependents from './commands/startUpdateDependents.js'
+import startChangelogPreview from './commands/startChangelogPreview.js'
 
 const cli = meow(
   `
@@ -145,6 +146,12 @@ async function run(): Promise<void> {
 
   const cwd = path.resolve(process.cwd(), cli.flags.cwd)
   switch (command) {
+    case 'changelog-preview': {
+      await startChangelogPreview({
+        cwd,
+      })
+      break
+    }
     case 'update-dependents': {
       await startUpdateDependents({
         cwd,

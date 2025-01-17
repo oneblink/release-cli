@@ -21,6 +21,8 @@
     "enquirer": "^2.4.1",
     "execa": "^8.0.1",
     "github-url-from-git": "^1.5.0",
+    "glob": "^11.0.1",
+    "keep-a-changelog": "^2.5.3",
     "meow": "^12.1.1",
     "ora": "^7.0.1",
     "patch-package": "^8.0.0",
