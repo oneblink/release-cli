@@ -29,3 +29,86 @@ Run the following command for usage information
 ```sh
 oneblink-release --help
 ```
+
+## Changelog Automation
+
+To avoid constant merge conflicts with the `CHANGELOG.md` file. The Release CLI can automate changelog entries by allow developers to create a single file for each change entry (or a as many entries as the developer would like to add in that single file). Start by creating a directory called: `changelog-entries` in the root of the repository and add a `.keep` file to the directory, like so:
+
+```
+|- changelog-entries/
+   |- .keep
+|- src/
+   |- index.js
+|- .gitignore
+|- package.json
+|- README.md
+```
+
+The `.keep` file will simply prevent the directory from being removed from source control after each release.
+
+Each time a developer wants to add an entry to a the changelog as part of the current release, create a file in the `changelog-entries` directory. The file must adhere to the [keepachangelog](https://keepachangelog.com/) format.
+
+Files can have as many entries as desired, however it is recommend to keep entries small to avoid merge conflicts with other developers.
+
+**All of the entry files will be removed as part of the release.**
+
+### Example Changelog Entry Files
+
+The following two files:
+
+- `kitchen-sink.md`
+
+  ````md
+  ### Changed
+
+  - the supported NodeJS version
+  - the name of a function. See the change below to migrate to the new function:
+    ```diff
+    -thisIsTheOldFunction()
+    +thisIsTheNewFunction()
+    ```
+
+  ### Removed
+
+  - something that was not being used anymore
+
+  ### Added
+
+  - a new feature
+
+  ### Fixed
+
+  - a bug
+  ````
+
+- `my-additions.md`
+
+  ```md
+  ### Added
+
+  - a really simple feature
+  ```
+
+Would result in the following change entry:
+
+### Changed
+
+- the supported NodeJS version
+- the name of a function. See the change below to migrate to the new function:
+  ```diff
+  -thisIsTheOldFunction()
+  +thisIsTheNewFunction()
+  ```
+
+### Removed
+
+- something that was not being used anymore
+
+### Added
+
+- a new feature
+- a really simple feature
+
+### Fixed
+
+- a bug

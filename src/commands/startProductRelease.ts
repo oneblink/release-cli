@@ -1,12 +1,12 @@
 import enquirer from 'enquirer'
-import executeCommand from './executeCommand.js'
-import parseChangelogWithLoading from './parseChangelogWithLoading.js'
-import promptForNextVersion from './promptForNextVersion.js'
+import executeCommand from '../terminal/executeCommand.js'
+import parseChangelogWithLoading from '../changelog/parseChangelogWithLoading.js'
+import promptForNextVersion from '../terminal/promptForNextVersion.js'
 import boxen from 'boxen'
 import chalk from 'chalk'
 import startRepositoryRelease from './startRepositoryRelease.js'
-import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
-import enumerateProductRepositories from './enumerateProductRepositories.js'
+import getRepositoryPlugin from '../repositories-plugins/plugins-factory.js'
+import enumerateProductRepositories from '../repositories/enumerateProductRepositories.js'
 
 export default async function startProductRelease({
   releaseName,

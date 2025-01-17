@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { SemVer } from 'semver'
-import getPreRelease from '../getPreRelease.js'
+import getPreRelease from '../utils/getPreRelease.js'
 import { RepositoryPlugin } from './RepositoryPlugin.js'
 
 export default class NugetPlugin implements RepositoryPlugin {
