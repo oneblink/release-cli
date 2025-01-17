@@ -46,9 +46,9 @@ To avoid constant merge conflicts with the `CHANGELOG.md` file. The Release CLI 
 
 The `.keep` file will simply prevent the directory from being removed from source control after each release.
 
-Each time a developer wants to add an entry to a the changelog as part of the current release, create a file in the `changelog-entries` directory. The file must adhere to the [keepachangelog](https://keepachangelog.com/) format.
+Each time a developer wants to add an entry to the changelog as part of the current release, create a file in the `changelog-entries` directory. The file must adhere to the [keepachangelog](https://keepachangelog.com/) format.
 
-Files can have as many entries as desired, however it is recommend to keep entries small to avoid merge conflicts with other developers.
+Files can have as many entries as desired, however it is recommended to keep entries small to avoid merge conflicts with other developers.
 
 **All of the entry files will be removed as part of the release.**
 
