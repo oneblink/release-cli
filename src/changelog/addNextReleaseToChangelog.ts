@@ -3,11 +3,9 @@ import prettier from 'prettier'
 import { SemVer } from 'semver'
 import wrapWithLoading from '../terminal/wrapWithLoading.js'
 import { RepositoryPlugin } from '../repositories-plugins/RepositoryPlugin.js'
-import generateCodeChangelogEntries from './generateCodeChangelogEntries.js'
-import generateDependenciesChangelogEntry from './generateDependenciesChangelogEntry.js'
-import parseChangelogWithLoading from './parseChangelogWithLoading.js'
-
-const UNRELEASED_VERSION_INDEX = 0
+import generateNextReleaseChangelogEntries, {
+  UNRELEASED_VERSION_INDEX,
+} from './generateNextReleaseChangelogEntries.js'
 
 export default async function addNextReleaseToChangelog({
   nextSemverVersion,
@@ -18,27 +16,18 @@ export default async function addNextReleaseToChangelog({
   releaseName: string | undefined
   repositoryPlugin: RepositoryPlugin
 }) {
-  const { parsedChangelog, changelogPath } = await parseChangelogWithLoading(
-    repositoryPlugin.cwd,
-  )
-
-  const dependenciesChangelogEntry = await generateDependenciesChangelogEntry({
+  const {
     parsedChangelog,
-    repositoryPlugin,
-  })
-
-  const { formatted: codeChangelogEntries, entryFiles } =
-    await generateCodeChangelogEntries({
-      cwd: repositoryPlugin.cwd,
-    })
+    changelogPath,
+    nextReleaseChangelogEntries,
+    changelogEntryFiles,
+  } = await generateNextReleaseChangelogEntries({ repositoryPlugin })
 
   const nextReleaseTitle = `[${nextSemverVersion.version}] - ${new Date()
     .toISOString()
     .substring(0, 10)}`
   const releaseNameSubtitle = releaseName
-    ? `
-
-##### Release Name: ${releaseName}`
+    ? `##### Release Name: ${releaseName}`
     : ''
 
   await wrapWithLoading(
@@ -59,13 +48,11 @@ ${parsedChangelog.versions
       return `
 ## ${title}
 
-## ${nextReleaseTitle}${releaseNameSubtitle}
+## ${nextReleaseTitle}
 
-${body}
+${releaseNameSubtitle}
 
-${codeChangelogEntries}
-  
-${dependenciesChangelogEntry}
+${nextReleaseChangelogEntries}
 `
     }
 
@@ -87,7 +74,7 @@ ${body}
     },
   )
 
-  for (const { filePath } of entryFiles) {
+  for (const { filePath } of changelogEntryFiles) {
     wrapWithLoading(
       {
         startText: `Deleting file: "${filePath}"`,
