@@ -11,7 +11,8 @@ describe('generateCodeChangelogEntries', () => {
 
     const result = await generateCodeChangelogEntries({ cwd })
 
-    expect(result).toMatchSnapshot()
+    expect(result.entryFiles).toHaveLength(2)
+    expect(result.formatted).toMatchSnapshot()
   })
 
   it('should handle empty changelog directory', async () => {
@@ -20,6 +21,7 @@ describe('generateCodeChangelogEntries', () => {
 
     const result = await generateCodeChangelogEntries({ cwd })
 
-    expect(result).toMatchSnapshot()
+    expect(result.entryFiles).toHaveLength(0)
+    expect(result.formatted).toMatchSnapshot()
   })
 })
