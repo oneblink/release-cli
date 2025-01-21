@@ -1,12 +1,12 @@
 import enquirer from 'enquirer'
-import executeCommand from './executeCommand.js'
-import parseChangelogWithLoading from './parseChangelogWithLoading.js'
-import promptForNextVersion from './promptForNextVersion.js'
+import executeCommand from '../terminal/executeCommand.js'
+import promptForNextVersion from '../terminal/promptForNextVersion.js'
 import boxen from 'boxen'
 import chalk from 'chalk'
 import startRepositoryRelease from './startRepositoryRelease.js'
-import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
-import enumerateProductRepositories from './enumerateProductRepositories.js'
+import getRepositoryPlugin from '../repositories-plugins/plugins-factory.js'
+import enumerateProductRepositories from '../repositories/enumerateProductRepositories.js'
+import generateNextReleaseChangelogEntries from '../changelog/generateNextReleaseChangelogEntries.js'
 
 export default async function startProductRelease({
   releaseName,
@@ -17,31 +17,27 @@ export default async function startProductRelease({
 
   const deploymentRequiredUrls: string[] = []
   await enumerateProductRepositories(
-    async ({ productRepository, cloneUrl, repositoryWorkingDirectory }) => {
+    async ({ productRepository, repositoryWorkingDirectory }) => {
       const { repositoryName } = productRepository
-
-      // Check if repository needs releasing
-      const { parsedChangelog } = await parseChangelogWithLoading(
-        repositoryWorkingDirectory,
-      )
-      const unreleasedVersion = parsedChangelog.versions.find((version) =>
-        version.title.toLowerCase().includes('unreleased'),
-      )
-      if (!unreleasedVersion) {
-        await continuePromptWithWarning(`"${repositoryName}" CHANGELOG.md does not contain an "Unreleased" section
-
-You need to checkout "${cloneUrl}" to fix this before trying again.`)
-        return
-      }
 
       const { stdout: lastCommitMessage } = await executeCommand(
         'git',
         ['log', '-1', '--pretty=oneline'],
         repositoryWorkingDirectory,
       )
+
+      const repositoryPlugin = await getRepositoryPlugin({
+        cwd: repositoryWorkingDirectory,
+        repositoryType: productRepository,
+      })
+
+      const { nextReleaseChangelogEntries } =
+        await generateNextReleaseChangelogEntries({
+          repositoryPlugin,
+        })
       const unreleasedChangelogEntries =
-        unreleasedVersion.body.trim() ||
-        chalk.italic('There are no entries under the "Unreleased" heading.')
+        nextReleaseChangelogEntries.trim() ||
+        chalk.italic('There will be no entries under the "Unreleased" heading.')
       console.log(
         boxen(
           chalk.blue(`${unreleasedChangelogEntries}
@@ -78,11 +74,6 @@ Last Commit: ${lastCommitMessage}`),
       if (isReleasing === 'no') {
         return
       }
-
-      const repositoryPlugin = await getRepositoryPlugin({
-        cwd: repositoryWorkingDirectory,
-        repositoryType: productRepository,
-      })
 
       const { nextVersion } = await promptForNextVersion({
         repositoryPlugin,
@@ -123,17 +114,4 @@ Last Commit: ${lastCommitMessage}`),
       ),
     )
   }
-}
-
-async function continuePromptWithWarning(warning: string) {
-  console.log(
-    boxen(chalk.yellow(warning), {
-      padding: 1,
-    }),
-  )
-  await enquirer.prompt({
-    type: 'invisible',
-    name: 'continue',
-    message: 'Press ENTER to continue.',
-  })
 }

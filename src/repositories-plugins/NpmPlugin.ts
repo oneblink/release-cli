@@ -1,7 +1,7 @@
 import { readPackageUp } from 'read-package-up'
 import { main as packageDiffSummary } from '../package-diff-summary/index.js'
 import { SemVer } from 'semver'
-import executeCommand from '../executeCommand.js'
+import executeCommand from '../terminal/executeCommand.js'
 import { RepositoryPlugin } from './RepositoryPlugin.js'
 
 export default class NpmPlugin implements RepositoryPlugin {

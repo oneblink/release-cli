@@ -6,14 +6,15 @@ import updateNotifier from 'update-notifier'
 import meow from 'meow'
 import chalk from 'chalk'
 
-import startRepositoryRelease from './startRepositoryRelease.js'
+import startRepositoryRelease from './commands/startRepositoryRelease.js'
 import semver from 'semver'
-import promptForNextVersion from './promptForNextVersion.js'
-import getPreRelease from './getPreRelease.js'
-import startProductRelease from './startProductRelease.js'
-import promptForReleaseName from './promptForReleaseName.js'
+import promptForNextVersion from './terminal/promptForNextVersion.js'
+import getPreRelease from './utils/getPreRelease.js'
+import startProductRelease from './commands/startProductRelease.js'
+import promptForReleaseName from './terminal/promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
-import startUpdateDependents from './startUpdateDependents.js'
+import startUpdateDependents from './commands/startUpdateDependents.js'
+import startChangelogPreview from './commands/startChangelogPreview.js'
 
 const cli = meow(
   `
@@ -24,8 +25,8 @@ ${chalk.grey(
 the information required to perform the release.`,
 )}
 
-  --name ......... Skip the question to enter a name for the release by passing
-                   a release name as a flag.
+  --name ........... Skip the question to enter a name for the release by
+                     passing a release name as a flag.
 
 ${chalk.bold('Examples')}
 
@@ -67,16 +68,33 @@ ${chalk.bold('Examples')}
   oneblink-release repository 1.1.1 --cwd ../path/to/code
   oneblink-release repository 1.1.1-uat.1 --no-git
 
+${chalk.bold.blue('oneblink-release update-dependents [--cwd path]')}
+
 ${chalk.grey('Update all product code bases that depend on an NPM package.')}
 
-  --cwd .......... Directory of the repository that is the dependency relative
-                   to the current working directory, defaults to the current
-                   working directory.
+  --cwd ............ Directory of the repository that is the dependency relative
+                     to the current working directory, defaults to the current
+                     working directory.
 
 ${chalk.bold('Examples')}
 
   oneblink-release update-dependents
   oneblink-release update-dependents --cwd ../path/to/code
+
+${chalk.bold.blue('oneblink-release changelog-preview [--cwd path]')}
+
+${chalk.grey(
+  `Display the changelog entries for the current "Unreleased" version based on
+dependency changes and files in the "changelog-entries" directory.`,
+)}
+
+  --cwd ............ Directory of the repository to preview, defaults to the
+                     current working directory.
+
+${chalk.bold('Examples')}
+
+  oneblink-release changelog-preview
+  oneblink-release changelog-preview --cwd ../path/to/code
 `,
   {
     importMeta: import.meta,
@@ -145,6 +163,12 @@ async function run(): Promise<void> {
 
   const cwd = path.resolve(process.cwd(), cli.flags.cwd)
   switch (command) {
+    case 'changelog-preview': {
+      await startChangelogPreview({
+        cwd,
+      })
+      break
+    }
     case 'update-dependents': {
       await startUpdateDependents({
         cwd,
