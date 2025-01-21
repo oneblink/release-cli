@@ -1,6 +1,4 @@
-/**
- * @type {import('jest').Config}
- */
+/** @type {import('jest').Config} */
 const config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -11,6 +9,8 @@ const config = {
       'ts-jest',
       {
         useESM: true,
+        isolatedModules: true,
+        tsconfig: './test/tsconfig.json',
       },
     ],
   },

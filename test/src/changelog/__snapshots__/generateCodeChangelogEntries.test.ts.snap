@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`generateCodeChangelogEntries should handle empty changelog directory 1`] = `
+{
+  "entryFiles": [],
+  "formatted": "",
+}
+`;
+
+exports[`generateCodeChangelogEntries should process changelog entries and format them 1`] = `
+{
+  "entryFiles": [
+    {
+      "filePath": "/Users/mattcarroll/Documents/sources/github/oneblink/release-cli/test/fixtures/valid-changelog/changelog-entries/entry2.md",
+      "markdown": "### Fixed
+
+- Bug 1
+",
+    },
+    {
+      "filePath": "/Users/mattcarroll/Documents/sources/github/oneblink/release-cli/test/fixtures/valid-changelog/changelog-entries/entry1.md",
+      "markdown": "### Added
+
+- Feature 1
+",
+    },
+  ],
+  "formatted": "### Added
+
+- Feature 1
+
+### Fixed
+
+- Bug 1
+",
+}
+`;

@@ -20,6 +20,7 @@ export default async function generateCodeChangelogEntries({
       const entryFilePaths = await glob(
         `${CHANGELOG_ENTRIES_DIRECTORY_NAME}/**`,
         {
+          absolute: true,
           cwd,
           nodir: true,
         },
