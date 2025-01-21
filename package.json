@@ -48,7 +48,8 @@
     "eslint-plugin-prettier": "^5.5.5",
     "fixpack": "^4.0.0",
     "prettier-plugin-jsdoc": "^1.8.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
   },
   "directories": {
     "test": "test"
@@ -82,7 +83,7 @@
     "prerelease": "npm run build",
     "pretest": "npm run eslint && npm run typescript && fixpack",
     "release": "node dist/bin.js repository --no-name --cwd .",
-    "test": "echo \"no tests\"",
+    "test": "vitest run",
     "typescript": "tsc --noEmit"
   },
   "type": "module"
