@@ -3,13 +3,14 @@ import { glob } from 'glob'
 import { parser, Release } from 'keep-a-changelog'
 import prettier from 'prettier'
 import wrapWithLoading from '../terminal/wrapWithLoading.js'
-
 export const CHANGELOG_ENTRIES_DIRECTORY_NAME = 'changelog-entries'
 
 export default async function generateCodeChangelogEntries({
   cwd,
+  entriesInChangelog,
 }: {
   cwd: string
+  entriesInChangelog: string | undefined
 }) {
   return await wrapWithLoading(
     {
@@ -27,6 +28,11 @@ export default async function generateCodeChangelogEntries({
       )
 
       const finalRelease = new Release()
+
+      if (entriesInChangelog) {
+        appendEntryToRelease(entriesInChangelog, finalRelease)
+      }
+
       const entryFiles: Array<{
         filePath: string
         markdown: string
@@ -37,18 +43,7 @@ export default async function generateCodeChangelogEntries({
           filePath: entryFilePath,
           markdown: entry,
         })
-        const parsed = parser(`# Changelog
-
-## Unreleased
-
-${entry}`)
-        for (const release of parsed.releases) {
-          for (const [type, changes] of release.changes) {
-            for (const change of changes) {
-              finalRelease.addChange(type, change)
-            }
-          }
-        }
+        appendEntryToRelease(entry, finalRelease)
       }
 
       const releaseChangelogEntries = finalRelease
@@ -78,4 +73,18 @@ ${entry}`)
       }
     },
   )
+}
+function appendEntryToRelease(entry: string, finalRelease: Release) {
+  const parsed = parser(`# Changelog
+
+## Unreleased
+
+${entry}`)
+  for (const release of parsed.releases) {
+    for (const [type, changes] of release.changes) {
+      for (const change of changes) {
+        finalRelease.addChange(type, change)
+      }
+    }
+  }
 }

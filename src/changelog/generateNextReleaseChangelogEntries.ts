@@ -18,6 +18,8 @@ export default async function generateNextReleaseChangelogEntries({
   const { formatted: codeChangelogEntries, entryFiles: changelogEntryFiles } =
     await generateCodeChangelogEntries({
       cwd: repositoryPlugin.cwd,
+      entriesInChangelog:
+        parsedChangelog.versions[UNRELEASED_VERSION_INDEX]?.body,
     })
 
   const dependenciesChangelogEntry = await generateDependenciesChangelogEntry({
@@ -27,8 +29,6 @@ export default async function generateNextReleaseChangelogEntries({
 
   const nextReleaseChangelogEntries = await prettier.format(
     `
-${parsedChangelog.versions[UNRELEASED_VERSION_INDEX]?.body || ''}
-
 ${codeChangelogEntries}
   
 ${dependenciesChangelogEntry}
