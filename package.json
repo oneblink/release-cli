@@ -76,7 +76,7 @@
   "scripts": {
     "build": "tsc --build",
     "eslint": "eslint --fix --cache --quiet ./src",
-    "jest": "cross-env NODE_OPTIONS=--experimental-vm-modules jest ",
+    "jest": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --silent",
     "postinstall": "patch-package",
     "prepare": "npm run build",
     "prerelease": "npm run build",
