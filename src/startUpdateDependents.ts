@@ -26,16 +26,16 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
   const dependency = dependencyResult.packageJson.name
   console.log('Beginning to update the dependents of:', dependency)
 
-  const { jiraTicket } = await enquirer.prompt<{
-    jiraTicket: string
+  const { ticket } = await enquirer.prompt<{
+    ticket: string
   }>({
     type: 'input',
-    name: 'jiraTicket',
-    message: `JIRA ticket to associate with pull requests? (e.g. ON-4323)`,
+    name: 'ticket',
+    message: `Ticket to associate with pull requests? (e.g. ON-4323, OB-4323)`,
     required: true,
     validate: (input) => {
-      if (!/^ON-\d+$/.test(input)) {
-        return 'JIRA ticket must be "ON-" followed by a number'
+      if (!/^(ON-|OB-)\d+$/.test(input)) {
+        return 'Ticket must be "ON-" or "OB-" followed by a number'
       }
       return true
     },
@@ -117,7 +117,7 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
 
       await executeCommand(
         'git',
-        ['checkout', '-b', jiraTicket],
+        ['checkout', '-b', ticket],
         repositoryWorkingDirectory,
       )
       if (isUpdatingTypes === 'yes') {
@@ -140,16 +140,16 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
       await executeCommand('git', ['add', '-A'], repositoryWorkingDirectory)
       await executeCommand(
         'git',
-        ['commit', '--message', `${jiraTicket} # Bumped ${dependency}`],
+        ['commit', '--message', `${ticket} # Bumped ${dependency}`],
         repositoryWorkingDirectory,
       )
       await executeCommand(
         'git',
-        ['push', '-u', 'origin', jiraTicket],
+        ['push', '-u', 'origin', ticket],
         repositoryWorkingDirectory,
       )
       createPullRequestUrls.push(
-        `https://github.com/oneblink/${productRepository.repositoryName}/pull/new/${jiraTicket}`,
+        `https://github.com/oneblink/${productRepository.repositoryName}/pull/new/${ticket}`,
       )
     },
   )
