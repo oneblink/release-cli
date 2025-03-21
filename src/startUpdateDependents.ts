@@ -39,6 +39,7 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
       }
       return true
     },
+    result: (input) => input.toUpperCase(),
   })
 
   const { isUpdatingTypes } = await enquirer.prompt<{
