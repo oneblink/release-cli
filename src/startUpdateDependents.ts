@@ -35,7 +35,7 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
     required: true,
     validate: (input) => {
       if (!/^[a-z]{1,3}-\d+$/i.test(input)) {
-        return 'Ticket must be "ON-" or "AP-" or "MS-" followed by a number'
+        return 'Ticket must be 1-3 alpha characters, then a hyphen followed by a number'
       }
       return true
     },
