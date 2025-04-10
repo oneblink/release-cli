@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for Linear Ticket prefix (OB)
+- Support for Linear Ticket prefix (AP | MS)
 
 ## [3.3.0] - 2024-11-20
 

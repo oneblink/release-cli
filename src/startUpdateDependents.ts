@@ -31,11 +31,11 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
   }>({
     type: 'input',
     name: 'ticket',
-    message: `Ticket to associate with pull requests? (e.g. ON-4323, OB-4323)`,
+    message: `Ticket to associate with pull requests? (e.g. ON-4323, AP-4323, MS-4323)`,
     required: true,
     validate: (input) => {
-      if (!/^(ON-|OB-)\d+$/i.test(input)) {
-        return 'Ticket must be "ON-" or "OB-" followed by a number'
+      if (!/^(ON-|AP-|MS-)\d+$/i.test(input)) {
+        return 'Ticket must be "ON-" or "AP-" or "MS-" followed by a number'
       }
       return true
     },
