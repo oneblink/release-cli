@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Support for Linear Ticket prefix (AP | MS)
+- Support for Built-in Data Sources repository
 
 ## [3.3.0] - 2024-11-20
 
