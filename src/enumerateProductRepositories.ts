@@ -112,6 +112,12 @@ const productRepositories: Repository[] = [
     type: 'NODE_JS',
   },
   {
+    label: 'Built-in Data Sources',
+    repositoryName: 'built-in-data-sources',
+    isPublic: false,
+    type: 'NODE_JS',
+  },
+  {
     label: '@oneblink/storage (NPM package)',
     repositoryName: 'storage',
     isPublic: true,
