@@ -1,7 +1,7 @@
 {
   "name": "@oneblink/release-cli",
   "description": "Used internally by OneBlink to release repositories quickly and consistently",
-  "version": "3.3.1-beta.4",
+  "version": "3.3.1",
   "author": "OneBlink <developers@oneblink> (https://github.com/oneblink)",
   "bin": {
     "oneblink-release": "dist/bin.js"
