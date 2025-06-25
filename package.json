@@ -1,7 +1,7 @@
 {
   "name": "@oneblink/release-cli",
   "description": "Used internally by OneBlink to release repositories quickly and consistently",
-  "version": "3.3.1",
+  "version": "3.4.0-beta.1",
   "author": "OneBlink <developers@oneblink> (https://github.com/oneblink)",
   "bin": {
     "oneblink-release": "dist/bin.js"
@@ -79,7 +79,7 @@
     "prepare": "npm run build",
     "prerelease": "npm run build",
     "pretest": "npm run eslint",
-    "release": "./dist/bin.js repository --no-name --cwd .",
+    "release": "node dist/bin.js repository --no-name --cwd .",
     "test": "npm run jest",
     "typescript": "tsc --noEmit"
   },
