@@ -73,10 +73,13 @@ ${chalk.grey('Update all product code bases that depend on an NPM package.')}
                    to the current working directory, defaults to the current
                    working directory.
 
+  --force ........ Update all dependencies without prompting the user.
+
 ${chalk.bold('Examples')}
 
   oneblink-release update-dependents
   oneblink-release update-dependents --cwd ../path/to/code
+  oneblink-release update-dependents --force
 `,
   {
     importMeta: import.meta,
@@ -105,6 +108,10 @@ ${chalk.bold('Examples')}
       cwd: {
         type: 'string',
         default: process.cwd(),
+      },
+      force: {
+        type: 'boolean',
+        default: false,
       },
     },
   },
@@ -148,6 +155,7 @@ async function run(): Promise<void> {
     case 'update-dependents': {
       await startUpdateDependents({
         cwd,
+        force: cli.flags.force,
       })
       break
     }
