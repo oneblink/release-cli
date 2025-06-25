@@ -5,7 +5,13 @@ import enquirer from 'enquirer'
 import executeCommand from './executeCommand.js'
 import boxen from 'boxen'
 
-export default async function startUpdateDependents({ cwd }: { cwd: string }) {
+export default async function startUpdateDependents({
+  cwd,
+  force = false,
+}: {
+  cwd: string
+  force?: boolean
+}) {
   const dependencyRepositoryPlugin = await getRepositoryPlugin({
     cwd,
   })
@@ -95,23 +101,32 @@ export default async function startUpdateDependents({ cwd }: { cwd: string }) {
         return
       }
 
-      const { isUpdating } = await enquirer.prompt<{
-        isUpdating: 'yes' | 'no'
-      }>({
-        type: 'select',
-        name: 'isUpdating',
-        message: `Would you like to update "${dependency}" in "${productRepository.repositoryName}" (${currentDependencyVersion} > ${dependencyResult.packageJson.version})?`,
-        choices: [
-          {
-            message: 'Yes, update dependency!',
-            name: 'yes',
-          },
-          {
-            message: `No! "${productRepository.repositoryName}" does not need to be updated.`,
-            name: 'no',
-          },
-        ],
-      })
+      let isUpdating: 'yes' | 'no'
+      if (force) {
+        isUpdating = 'yes'
+        console.log(
+          `Auto-updating "${dependency}" in "${productRepository.repositoryName}" (${currentDependencyVersion} > ${dependencyResult.packageJson.version})`,
+        )
+      } else {
+        const updateResult = await enquirer.prompt<{
+          isUpdating: 'yes' | 'no'
+        }>({
+          type: 'select',
+          name: 'isUpdating',
+          message: `Would you like to update "${dependency}" in "${productRepository.repositoryName}" (${currentDependencyVersion} > ${dependencyResult.packageJson.version})?`,
+          choices: [
+            {
+              message: 'Yes, update dependency!',
+              name: 'yes',
+            },
+            {
+              message: `No! "${productRepository.repositoryName}" does not need to be updated.`,
+              name: 'no',
+            },
+          ],
+        })
+        isUpdating = updateResult.isUpdating
+      }
       if (isUpdating === 'no') {
         return
       }
