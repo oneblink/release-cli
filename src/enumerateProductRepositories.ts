@@ -10,12 +10,6 @@ type Repository = {
 
 const productRepositories: Repository[] = [
   {
-    label: '@oneblink/apps (NPM package)',
-    repositoryName: 'apps',
-    type: 'NPM',
-    isPublic: true,
-  },
-  {
     label: '@oneblink/apps-react (NPM package)',
     repositoryName: 'apps-react',
     type: 'NPM',
