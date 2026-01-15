@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `@oneblink/apps` from product repositories
 
+### Changed
+
+- Require minimum [Node.js 24](https://nodejs.org/en/blog/release/v24.11.0)
+
+### Removed
+
+- **[BREAKING]** support for Node.js 20.
+
 ## [3.4.0] - 2025-07-01
 
 ### Added

@@ -7,6 +7,7 @@ import * as npm from './npm.js'
 const octokit = new Octokit({
   auth: process.env.GITHUB_OAUTH_TOKEN,
 })
+octokit.log.debug = () => undefined
 
 function changelogUrlAt(projectUrl: string): Promise<string> {
   const changelogUrl = projectUrl + '/blob/master/CHANGELOG.md'
