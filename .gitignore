@@ -31,3 +31,4 @@ my-serverless
 local-scripts
 scripts
 dist
+tsconfig.tsbuildinfo
