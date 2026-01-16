@@ -100,12 +100,6 @@ const productRepositories: Repository[] = [
     type: 'NODE_JS',
   },
   {
-    label: 'Volunteers Client',
-    repositoryName: 'product-volunteers-client',
-    isPublic: false,
-    type: 'NODE_JS',
-  },
-  {
     label: 'Built-in Data Sources',
     repositoryName: 'built-in-data-sources',
     isPublic: false,
