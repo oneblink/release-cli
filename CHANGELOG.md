@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-02-02
+
 ### Removed
 
 - `@oneblink/apps` from product repositories
@@ -19,6 +21,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - **[BREAKING]** support for Node.js 20.
+
+### Dependencies
+
+- update @octokit/rest to [22.0.1](https://github.com/octokit/rest.js/releases/tag/v22.0.1) (from [20.0.2](https://github.com/octokit/rest.js/releases/tag/v20.0.2))
+
+- update boxen to [8.0.1](https://github.com/sindresorhus/boxen/releases/tag/v8.0.1) (from [7.1.1](https://github.com/sindresorhus/boxen/releases/tag/v7.1.1))
+
+- update chalk to [5.6.2](https://github.com/chalk/chalk/releases/tag/v5.6.2) (from [5.3.0](https://github.com/chalk/chalk/releases/tag/v5.3.0))
+
+- update execa to [9.6.1](https://github.com/sindresorhus/execa/releases/tag/v9.6.1) (from [8.0.1](https://github.com/sindresorhus/execa/releases/tag/v8.0.1))
+
+- update meow to [14.0.0](https://github.com/sindresorhus/meow/releases/tag/v14.0.0) (from [12.1.1](https://github.com/sindresorhus/meow/releases/tag/v12.1.1))
+
+- update ora to [9.0.0](https://github.com/sindresorhus/ora/releases/tag/v9.0.0) (from [7.0.1](https://github.com/sindresorhus/ora/releases/tag/v7.0.1))
+
+- update patch-package to [8.0.1](https://github.com/ds300/patch-package/blob/master/CHANGELOG.md) (from [8.0.0](https://github.com/ds300/patch-package/releases/tag/v8.0.0))
+
+- update prettier to [3.8.0](https://github.com/prettier/prettier/releases/tag/3.8.0) (from [3.0.3](https://github.com/prettier/prettier/releases/tag/3.0.3))
+
+- update read-package-up to [12.0.0](https://github.com/sindresorhus/read-package-up/releases/tag/v12.0.0) (from [11.0.0](https://github.com/sindresorhus/read-package-up/releases/tag/v11.0.0))
+
+- update semver to [7.7.3](https://github.com/npm/node-semver/releases/tag/v7.7.3) (from [7.5.4](https://github.com/npm/node-semver/releases/tag/v7.5.4))
+
+- update update-notifier to [7.3.1](https://github.com/sindresorhus/update-notifier/releases/tag/v7.3.1) (from [7.0.0](https://github.com/sindresorhus/update-notifier/releases/tag/v7.0.0))
 
 ## [3.4.0] - 2025-07-01
 
