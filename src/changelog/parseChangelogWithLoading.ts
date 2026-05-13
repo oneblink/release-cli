@@ -1,6 +1,6 @@
 import path from 'path'
 import parseChangelog from 'changelog-parser'
-import wrapWithLoading from './wrapWithLoading.js'
+import wrapWithLoading from '../terminal/wrapWithLoading.js'
 
 export default async function parseChangelogWithLoading(cwd: string) {
   const changelogPath = path.join(cwd, 'CHANGELOG.md')
