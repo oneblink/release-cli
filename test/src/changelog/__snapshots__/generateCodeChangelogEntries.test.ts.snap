@@ -13,7 +13,7 @@ exports[`generateCodeChangelogEntries > should process changelog entries and for
 "
 `;
 
-exports[`generateCodeChangelogEntries should process changelog entries with existing changelog and format them 1`] = `
+exports[`generateCodeChangelogEntries > should process changelog entries with existing changelog and format them 1`] = `
 "### Added
 
 - some stuff
