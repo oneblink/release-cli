@@ -1,6 +1,6 @@
 import path from 'path'
 import prepareCloneRepository from './prepareCloneRepository.js'
-import { RepositoryType } from './repositories-plugins/plugins-factory.js'
+import { RepositoryType } from '../repositories-plugins/plugins-factory.js'
 
 type Repository = {
   label: string

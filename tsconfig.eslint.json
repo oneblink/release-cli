@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["./src", "eslint.config.mjs"],
+  "include": ["./src", "./test", "eslint.config.mjs"],
   "compilerOptions": {
     "rootDir": "./"
   }

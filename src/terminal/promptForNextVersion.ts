@@ -1,7 +1,7 @@
 import enquirer from 'enquirer'
 import semver from 'semver'
-import getPreRelease from './getPreRelease.js'
-import { RepositoryPlugin } from './repositories-plugins/RepositoryPlugin.js'
+import getPreRelease from '../utils/getPreRelease.js'
+import { RepositoryPlugin } from '../repositories-plugins/RepositoryPlugin.js'
 
 export default async function promptForNextVersion({
   repositoryPlugin,

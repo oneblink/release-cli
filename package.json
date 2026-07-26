@@ -21,6 +21,8 @@
     "enquirer": "^2.4.1",
     "execa": "^9.6.1",
     "github-url-from-git": "^1.5.0",
+    "glob": "^11.0.1",
+    "keep-a-changelog": "^2.5.3",
     "meow": "^14.0.0",
     "ora": "^9.0.0",
     "patch-package": "^8.0.1",
@@ -46,7 +48,8 @@
     "eslint-plugin-prettier": "^5.5.5",
     "fixpack": "^4.0.0",
     "prettier-plugin-jsdoc": "^1.8.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
   },
   "directories": {
     "test": "test"
@@ -80,7 +83,7 @@
     "prerelease": "npm run build",
     "pretest": "npm run eslint && npm run typescript && fixpack",
     "release": "node dist/bin.js repository --no-name --cwd .",
-    "test": "echo \"no tests\"",
+    "test": "vitest run",
     "typescript": "tsc --noEmit"
   },
   "type": "module"

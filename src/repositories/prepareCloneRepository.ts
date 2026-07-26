@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from 'fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import executeCommand from './executeCommand.js'
-import wrapWithLoading from './wrapWithLoading.js'
+import executeCommand from '../terminal/executeCommand.js'
+import wrapWithLoading from '../terminal/wrapWithLoading.js'
 
 export default async function prepareCloneRepository({
   repositoryName,
