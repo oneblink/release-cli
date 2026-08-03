@@ -4,6 +4,22 @@ import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import enquirer from 'enquirer'
 import executeCommand from './executeCommand.js'
 import boxen from 'boxen'
+import chalk from 'chalk'
+import prepareCloneRepository from './prepareCloneRepository.js'
+import topologicallySortByPackageDependencies from './topologicallySortByPackageDependencies.js'
+import waitForNpmPackageVersion from './waitForNpmPackageVersion.js'
+import promptForNextVersion from './promptForNextVersion.js'
+import promptForReleaseName from './promptForReleaseName.js'
+import startRepositoryRelease from './startRepositoryRelease.js'
+import getPreRelease from './getPreRelease.js'
+import {
+  buildDependencyBumpCommitMessage,
+  getDependencyInstallSpecs,
+  getDependentCandidates,
+  getDownstreamRepositoryNames,
+  getIntermediateNpmDependents,
+  ScannedProductRepository,
+} from './updateDependentsPlanning.js'
 
 export default async function startUpdateDependents({
   cwd,
@@ -30,6 +46,7 @@ export default async function startUpdateDependents({
   }
 
   const dependency = dependencyResult.packageJson.name
+  const dependencyVersion = dependencyResult.packageJson.version
   console.log('Beginning to update the dependents of:', dependency)
 
   const { ticket } = await enquirer.prompt<{
@@ -66,109 +83,223 @@ export default async function startUpdateDependents({
     ],
   })
 
+  const scannedRepositories = await scanProductRepositories()
+  const candidates = getDependentCandidates({
+    scannedRepositories,
+    dependency,
+    dependencyVersion,
+  })
+
+  for (const scannedRepository of scannedRepositories) {
+    logSkippedRepository({
+      scannedRepository,
+      dependency,
+      dependencyVersion,
+      candidates,
+    })
+  }
+
+  if (!candidates.length) {
+    console.log(`No product repositories need "${dependency}" updated.`)
+    return
+  }
+
+  const intermediates = getIntermediateNpmDependents(candidates)
+  const sortedIntermediates =
+    topologicallySortByPackageDependencies(intermediates)
+
+  const releasedPackageVersions = new Map<string, string>([
+    [dependency, dependencyVersion],
+  ])
+  const releasedRepositoryNames = new Set<string>()
+  const releasedPackageSummaries: string[] = []
   const createPullRequestUrls: string[] = []
 
-  await enumerateProductRepositories(
-    async ({ productRepository, repositoryWorkingDirectory }) => {
-      const repositoryPlugin = await getRepositoryPlugin({
-        cwd: repositoryWorkingDirectory,
-        repositoryType: productRepository,
-      })
-      if (!repositoryPlugin.supportsDependencyUpdates) {
-        console.log(
-          `Skipping "${productRepository.repositoryName}" as "${repositoryPlugin.displayType}" does not support updating dependencies.`,
-        )
-        return
-      }
+  for (const intermediate of sortedIntermediates) {
+    const downstreamRepositoryNames = getDownstreamRepositoryNames({
+      candidates,
+      intermediate,
+    })
 
-      const result = await readPackageUp({
-        cwd: repositoryWorkingDirectory,
-      })
-      const currentDependencyVersion =
-        result?.packageJson.dependencies?.[dependency]
-      if (!currentDependencyVersion) {
-        console.log(
-          `Skipping "${productRepository.repositoryName}" as it does not contain "${dependency}" as a dependency.`,
-        )
-        return
-      }
-      if (
-        currentDependencyVersion === `^${dependencyResult.packageJson.version}`
-      ) {
-        console.log(
-          `Skipping "${productRepository.repositoryName}" as it's version of "${dependency}" is already "${currentDependencyVersion}".`,
-        )
-        return
-      }
+    const { shouldRelease } = await enquirer.prompt<{
+      shouldRelease: 'yes' | 'no'
+    }>({
+      type: 'select',
+      name: 'shouldRelease',
+      message: `"${intermediate.productRepository.repositoryName}" (${intermediate.packageName}) also needs a release because it is depended on by: ${downstreamRepositoryNames.join(', ')}. Update "${dependency}" and release "${intermediate.packageName}" now so downstream pull requests can include both version bumps?`,
+      choices: [
+        {
+          message: `Yes, update and release "${intermediate.packageName}"`,
+          name: 'yes',
+        },
+        {
+          message: `No, only open a dependency bump pull request for "${intermediate.productRepository.repositoryName}"`,
+          name: 'no',
+        },
+      ],
+    })
 
-      let isUpdating: 'yes' | 'no'
-      if (force) {
-        isUpdating = 'yes'
-        console.log(
-          `Auto-updating "${dependency}" in "${productRepository.repositoryName}" (${currentDependencyVersion} > ${dependencyResult.packageJson.version})`,
-        )
-      } else {
-        const updateResult = await enquirer.prompt<{
-          isUpdating: 'yes' | 'no'
-        }>({
-          type: 'select',
-          name: 'isUpdating',
-          message: `Would you like to update "${dependency}" in "${productRepository.repositoryName}" (${currentDependencyVersion} > ${dependencyResult.packageJson.version})?`,
-          choices: [
-            {
-              message: 'Yes, update dependency!',
-              name: 'yes',
-            },
-            {
-              message: `No! "${productRepository.repositoryName}" does not need to be updated.`,
-              name: 'no',
-            },
-          ],
-        })
-        isUpdating = updateResult.isUpdating
-      }
-      if (isUpdating === 'no') {
-        return
-      }
-
-      await executeCommand(
-        'git',
-        ['checkout', '-b', ticket],
-        repositoryWorkingDirectory,
+    if (shouldRelease === 'no') {
+      console.log(
+        chalk.yellow(
+          `Skipping release of "${intermediate.packageName}". Downstream pull requests may conflict later when "${intermediate.packageName}" is released and dependents are updated again.`,
+        ),
       )
-      if (isUpdatingTypes === 'yes') {
+      continue
+    }
+
+    await withClonedRepository(
+      intermediate.productRepository.repositoryName,
+      async (repositoryWorkingDirectory) => {
+        const bumpedPackageNames = await installDependencyUpdates({
+          cwd: repositoryWorkingDirectory,
+          dependencies: intermediate.dependencies,
+          releasedPackageVersions,
+          isUpdatingTypes: isUpdatingTypes === 'yes',
+        })
+
+        if (!bumpedPackageNames.length && isUpdatingTypes !== 'yes') {
+          console.log(
+            `Skipping release of "${intermediate.packageName}" as there were no dependency updates to apply.`,
+          )
+          return
+        }
+
+        await commitDependencyUpdates({
+          cwd: repositoryWorkingDirectory,
+          ticket,
+          bumpedPackageNames,
+          isUpdatingTypes: isUpdatingTypes === 'yes',
+        })
+
+        const repositoryPlugin = await getRepositoryPlugin({
+          cwd: repositoryWorkingDirectory,
+          repositoryType: intermediate.productRepository,
+        })
+        const { nextVersion } = await promptForNextVersion({
+          repositoryPlugin,
+          noPreRelease: false,
+        })
+        const preRelease = getPreRelease(nextVersion)
+        const releaseName =
+          intermediate.productRepository.isPublic || preRelease
+            ? undefined
+            : await promptForReleaseName()
+
+        await startRepositoryRelease({
+          nextVersion,
+          git: true,
+          releaseName,
+          repositoryPlugin,
+        })
+
+        await waitForNpmPackageVersion({
+          packageName: intermediate.packageName,
+          version: nextVersion,
+        })
+
+        releasedPackageVersions.set(intermediate.packageName, nextVersion)
+        releasedRepositoryNames.add(
+          intermediate.productRepository.repositoryName,
+        )
+        releasedPackageSummaries.push(
+          `${intermediate.packageName}@${nextVersion}`,
+        )
+      },
+    )
+  }
+
+  for (const candidate of candidates) {
+    if (
+      releasedRepositoryNames.has(candidate.productRepository.repositoryName)
+    ) {
+      continue
+    }
+
+    let isUpdating: 'yes' | 'no'
+    if (force) {
+      isUpdating = 'yes'
+      console.log(
+        `Auto-updating "${dependency}" in "${candidate.productRepository.repositoryName}" (${candidate.currentSourceDependencyVersion} > ${dependencyVersion})`,
+      )
+    } else {
+      const updateResult = await enquirer.prompt<{
+        isUpdating: 'yes' | 'no'
+      }>({
+        type: 'select',
+        name: 'isUpdating',
+        message: `Would you like to update dependencies in "${candidate.productRepository.repositoryName}" (${candidate.currentSourceDependencyVersion} > ${dependencyVersion})?`,
+        choices: [
+          {
+            message: 'Yes, update dependency!',
+            name: 'yes',
+          },
+          {
+            message: `No! "${candidate.productRepository.repositoryName}" does not need to be updated.`,
+            name: 'no',
+          },
+        ],
+      })
+      isUpdating = updateResult.isUpdating
+    }
+    if (isUpdating === 'no') {
+      continue
+    }
+
+    await withClonedRepository(
+      candidate.productRepository.repositoryName,
+      async (repositoryWorkingDirectory) => {
         await executeCommand(
-          'npm',
-          ['install', '--package-lock-only', '-D', '@oneblink/types'],
+          'git',
+          ['checkout', '-b', ticket],
           repositoryWorkingDirectory,
         )
-      }
-      await executeCommand(
-        'npm',
-        [
-          'install',
-          '--package-lock-only',
-          '--save',
-          `${dependency}@${dependencyResult.packageJson.version}`,
-        ],
-        repositoryWorkingDirectory,
-      )
-      await executeCommand('git', ['add', '-A'], repositoryWorkingDirectory)
-      await executeCommand(
-        'git',
-        ['commit', '--message', `${ticket} # Bumped ${dependency}`],
-        repositoryWorkingDirectory,
-      )
-      await executeCommand(
-        'git',
-        ['push', '-u', 'origin', ticket],
-        repositoryWorkingDirectory,
-      )
-      createPullRequestUrls.push(
-        `https://github.com/oneblink/${productRepository.repositoryName}/pull/new/${ticket}`,
-      )
-    },
-  )
+
+        const bumpedPackageNames = await installDependencyUpdates({
+          cwd: repositoryWorkingDirectory,
+          dependencies: candidate.dependencies,
+          releasedPackageVersions,
+          isUpdatingTypes: isUpdatingTypes === 'yes',
+        })
+
+        if (!bumpedPackageNames.length && isUpdatingTypes !== 'yes') {
+          console.log(
+            `Skipping "${candidate.productRepository.repositoryName}" as there were no dependency updates to apply.`,
+          )
+          return
+        }
+
+        await commitDependencyUpdates({
+          cwd: repositoryWorkingDirectory,
+          ticket,
+          bumpedPackageNames,
+          isUpdatingTypes: isUpdatingTypes === 'yes',
+        })
+        await executeCommand(
+          'git',
+          ['push', '-u', 'origin', ticket],
+          repositoryWorkingDirectory,
+        )
+        createPullRequestUrls.push(
+          `https://github.com/oneblink/${candidate.productRepository.repositoryName}/pull/new/${ticket}`,
+        )
+      },
+    )
+  }
+
+  if (releasedPackageSummaries.length) {
+    console.log(
+      boxen(
+        `The following NPM packages were released during this run:
+
+  ${releasedPackageSummaries.join(`
+  `)}`,
+        {
+          padding: 1,
+        },
+      ),
+    )
+  }
 
   if (createPullRequestUrls.length) {
     console.log(
@@ -183,4 +314,170 @@ export default async function startUpdateDependents({
       ),
     )
   }
+}
+
+async function scanProductRepositories(): Promise<ScannedProductRepository[]> {
+  const scannedRepositories: ScannedProductRepository[] = []
+
+  await enumerateProductRepositories(
+    async ({ productRepository, repositoryWorkingDirectory }) => {
+      const repositoryPlugin = await getRepositoryPlugin({
+        cwd: repositoryWorkingDirectory,
+        repositoryType: productRepository,
+      })
+      if (!repositoryPlugin.supportsDependencyUpdates) {
+        console.log(
+          `Skipping "${productRepository.repositoryName}" as "${repositoryPlugin.displayType}" does not support updating dependencies.`,
+        )
+        scannedRepositories.push({
+          productRepository,
+          packageName: undefined,
+          packageVersion: undefined,
+          dependencies: {},
+          supportsDependencyUpdates: false,
+        })
+        return
+      }
+
+      const result = await readPackageUp({
+        cwd: repositoryWorkingDirectory,
+      })
+      scannedRepositories.push({
+        productRepository,
+        packageName: result?.packageJson.name,
+        packageVersion: result?.packageJson.version,
+        dependencies: result?.packageJson.dependencies || {},
+        supportsDependencyUpdates: true,
+      })
+    },
+  )
+
+  return scannedRepositories
+}
+
+function logSkippedRepository({
+  scannedRepository,
+  dependency,
+  dependencyVersion,
+  candidates,
+}: {
+  scannedRepository: ScannedProductRepository
+  dependency: string
+  dependencyVersion: string
+  candidates: ReturnType<typeof getDependentCandidates>
+}) {
+  if (!scannedRepository.supportsDependencyUpdates) {
+    return
+  }
+
+  if (
+    candidates.some(
+      (candidate) =>
+        candidate.productRepository.repositoryName ===
+        scannedRepository.productRepository.repositoryName,
+    )
+  ) {
+    return
+  }
+
+  const currentDependencyVersion = scannedRepository.dependencies[dependency]
+  if (!currentDependencyVersion) {
+    console.log(
+      `Skipping "${scannedRepository.productRepository.repositoryName}" as it does not contain "${dependency}" as a dependency.`,
+    )
+    return
+  }
+  if (currentDependencyVersion === `^${dependencyVersion}`) {
+    console.log(
+      `Skipping "${scannedRepository.productRepository.repositoryName}" as it's version of "${dependency}" is already "${currentDependencyVersion}".`,
+    )
+    return
+  }
+  if (!scannedRepository.packageName || !scannedRepository.packageVersion) {
+    console.log(
+      `Skipping "${scannedRepository.productRepository.repositoryName}" as a package name/version could not be determined.`,
+    )
+  }
+}
+
+async function withClonedRepository(
+  repositoryName: string,
+  fn: (repositoryWorkingDirectory: string) => Promise<void>,
+) {
+  const {
+    cloneRepository,
+    repositoryWorkingDirectory,
+    removeRepositoryWorkingDirectory,
+  } = await prepareCloneRepository({
+    repositoryName,
+  })
+
+  try {
+    await cloneRepository()
+    await fn(repositoryWorkingDirectory)
+  } finally {
+    await removeRepositoryWorkingDirectory()
+  }
+}
+
+async function installDependencyUpdates({
+  cwd,
+  dependencies,
+  releasedPackageVersions,
+  isUpdatingTypes,
+}: {
+  cwd: string
+  dependencies: Record<string, string | undefined>
+  releasedPackageVersions: Map<string, string>
+  isUpdatingTypes: boolean
+}): Promise<string[]> {
+  const { bumpedPackageNames, installSpecs } = getDependencyInstallSpecs({
+    dependencies,
+    releasedPackageVersions,
+  })
+
+  if (isUpdatingTypes) {
+    await executeCommand(
+      'npm',
+      ['install', '--package-lock-only', '-D', '@oneblink/types'],
+      cwd,
+    )
+  }
+
+  if (installSpecs.length) {
+    await executeCommand(
+      'npm',
+      ['install', '--package-lock-only', '--save', ...installSpecs],
+      cwd,
+    )
+  }
+
+  return bumpedPackageNames
+}
+
+async function commitDependencyUpdates({
+  cwd,
+  ticket,
+  bumpedPackageNames,
+  isUpdatingTypes,
+}: {
+  cwd: string
+  ticket: string
+  bumpedPackageNames: string[]
+  isUpdatingTypes: boolean
+}) {
+  await executeCommand('git', ['add', '-A'], cwd)
+  await executeCommand(
+    'git',
+    [
+      'commit',
+      '--message',
+      buildDependencyBumpCommitMessage({
+        ticket,
+        bumpedPackageNames,
+        isUpdatingTypes,
+      }),
+    ],
+    cwd,
+  )
 }

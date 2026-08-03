@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `update-dependents` discovers intermediate NPM dependents at runtime, prompts to release them, waits for npm publish, and folds those versions into a single downstream pull request
+- `--update-dependents` flag to `oneblink-release repository` to wait for npm publish after release, then run `update-dependents`
+
 ### Fixed
 
 - github action permissions to allow docs and github release jobs

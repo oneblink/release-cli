@@ -2,13 +2,13 @@ import path from 'path'
 import prepareCloneRepository from './prepareCloneRepository.js'
 import { RepositoryType } from './repositories-plugins/plugins-factory.js'
 
-type Repository = {
+export type ProductRepository = {
   label: string
   repositoryName: string
   isPublic: boolean
 } & RepositoryType
 
-const productRepositories: Repository[] = [
+const productRepositories: ProductRepository[] = [
   {
     label: '@oneblink/apps-react (NPM package)',
     repositoryName: 'apps-react',
@@ -136,7 +136,7 @@ export default async function enumerateProductRepositories(
   fn: (options: {
     cloneUrl: string
     repositoryWorkingDirectory: string
-    productRepository: Repository
+    productRepository: ProductRepository
   }) => Promise<void>,
 ) {
   for (const productRepository of productRepositories) {
