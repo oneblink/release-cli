@@ -56,38 +56,75 @@ export function getDependentCandidates({
   return candidates
 }
 
-export function getIntermediateNpmDependents(
-  candidates: DependentCandidate[],
-): DependentCandidate[] {
+export function getIntermediateNpmDependents({
+  candidates,
+  scannedRepositories,
+}: {
+  candidates: DependentCandidate[]
+  scannedRepositories: ScannedProductRepository[]
+}): DependentCandidate[] {
   return candidates.filter((candidate) => {
     if (candidate.productRepository.type !== 'NPM') {
       return false
     }
 
-    return candidates.some(
-      (otherCandidate) =>
-        otherCandidate.productRepository.repositoryName !==
+    return scannedRepositories.some(
+      (scannedRepository) =>
+        scannedRepository.productRepository.repositoryName !==
           candidate.productRepository.repositoryName &&
-        !!otherCandidate.dependencies[candidate.packageName],
+        !!scannedRepository.dependencies[candidate.packageName],
     )
   })
 }
 
 export function getDownstreamRepositoryNames({
-  candidates,
+  scannedRepositories,
   intermediate,
 }: {
-  candidates: DependentCandidate[]
+  scannedRepositories: ScannedProductRepository[]
   intermediate: DependentCandidate
 }): string[] {
-  return candidates
+  return scannedRepositories
     .filter(
-      (candidate) =>
-        candidate.productRepository.repositoryName !==
+      (scannedRepository) =>
+        scannedRepository.productRepository.repositoryName !==
           intermediate.productRepository.repositoryName &&
-        candidate.dependencies[intermediate.packageName],
+        !!scannedRepository.dependencies[intermediate.packageName],
     )
-    .map((candidate) => candidate.productRepository.repositoryName)
+    .map(
+      (scannedRepository) =>
+        scannedRepository.productRepository.repositoryName,
+    )
+}
+
+export function getRepositoriesNeedingDependencyUpdates({
+  scannedRepositories,
+  releasedPackageVersions,
+  excludeRepositoryNames,
+}: {
+  scannedRepositories: ScannedProductRepository[]
+  releasedPackageVersions: Map<string, string>
+  excludeRepositoryNames?: Set<string>
+}): DependentCandidate[] {
+  const candidatesByRepositoryName = new Map<string, DependentCandidate>()
+
+  for (const [packageName, version] of releasedPackageVersions) {
+    for (const candidate of getDependentCandidates({
+      scannedRepositories,
+      dependency: packageName,
+      dependencyVersion: version,
+    })) {
+      const repositoryName = candidate.productRepository.repositoryName
+      if (excludeRepositoryNames?.has(repositoryName)) {
+        continue
+      }
+      if (!candidatesByRepositoryName.has(repositoryName)) {
+        candidatesByRepositoryName.set(repositoryName, candidate)
+      }
+    }
+  }
+
+  return [...candidatesByRepositoryName.values()]
 }
 
 export function getDependencyInstallSpecs({

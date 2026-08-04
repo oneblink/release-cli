@@ -23,6 +23,7 @@ import {
   getDependentCandidates,
   getDownstreamRepositoryNames,
   getIntermediateNpmDependents,
+  getRepositoriesNeedingDependencyUpdates,
   ScannedProductRepository,
 } from './updateDependentsPlanning.js'
 
@@ -84,8 +85,6 @@ export default async function startUpdateDependents({
 
   try {
     const { scannedRepositories } = await scanProductRepositories({
-      dependency,
-      dependencyVersion,
       retainedClones,
     })
 
@@ -109,9 +108,21 @@ export default async function startUpdateDependents({
       return
     }
 
-    const intermediates = getIntermediateNpmDependents(candidates)
+    const intermediates = getIntermediateNpmDependents({
+      candidates,
+      scannedRepositories,
+    })
     const sortedIntermediates =
       topologicallySortByPackageDependencies(intermediates)
+
+    await pruneRetainedClones({
+      retainedClones,
+      repositoryNamesToRetain: getRepositoryNamesToRetain({
+        candidates,
+        intermediates,
+        scannedRepositories,
+      }),
+    })
 
     const releasedPackageVersions = new Map<string, string>([
       [dependency, dependencyVersion],
@@ -122,7 +133,7 @@ export default async function startUpdateDependents({
 
     for (const intermediate of sortedIntermediates) {
       const downstreamRepositoryNames = getDownstreamRepositoryNames({
-        candidates,
+        scannedRepositories,
         intermediate,
       })
 
@@ -164,7 +175,7 @@ export default async function startUpdateDependents({
 
       const repositoryWorkingDirectory = getRetainedWorkingDirectory({
         retainedClones,
-        candidate: intermediate,
+        repositoryName: intermediate.productRepository.repositoryName,
       })
 
       const bumpedPackageNames = await installDependencyUpdates({
@@ -221,18 +232,25 @@ export default async function startUpdateDependents({
       )
     }
 
-    for (const candidate of candidates) {
-      if (
-        releasedRepositoryNames.has(candidate.productRepository.repositoryName)
-      ) {
-        continue
-      }
+    const updateTargets = getRepositoriesNeedingDependencyUpdates({
+      scannedRepositories,
+      releasedPackageVersions,
+      excludeRepositoryNames: releasedRepositoryNames,
+    })
+
+    for (const candidate of updateTargets) {
+      const { bumpedPackageNames: packagesToUpdate } = getDependencyInstallSpecs(
+        {
+          dependencies: candidate.dependencies,
+          releasedPackageVersions,
+        },
+      )
 
       let isUpdating: 'yes' | 'no'
       if (shouldForceUpdateDependency) {
         isUpdating = 'yes'
         console.log(
-          `Auto-updating "${dependency}" in "${candidate.productRepository.repositoryName}" (${candidate.currentSourceDependencyVersion} > ${dependencyVersion})`,
+          `Auto-updating ${packagesToUpdate.join(', ')} in "${candidate.productRepository.repositoryName}"`,
         )
       } else {
         const updateResult = await enquirer.prompt<{
@@ -240,7 +258,7 @@ export default async function startUpdateDependents({
         }>({
           type: 'select',
           name: 'isUpdating',
-          message: `Would you like to update dependencies in "${candidate.productRepository.repositoryName}" (${candidate.currentSourceDependencyVersion} > ${dependencyVersion})?`,
+          message: `Would you like to update ${packagesToUpdate.join(', ')} in "${candidate.productRepository.repositoryName}"?`,
           choices: [
             {
               message: 'Yes, update dependency!',
@@ -258,9 +276,9 @@ export default async function startUpdateDependents({
         continue
       }
 
-      const repositoryWorkingDirectory = getRetainedWorkingDirectory({
+      const repositoryWorkingDirectory = await ensureRetainedWorkingDirectory({
         retainedClones,
-        candidate,
+        repositoryName: candidate.productRepository.repositoryName,
       })
 
       await executeCommand(
@@ -453,12 +471,8 @@ async function resolveNextVersion({
 }
 
 async function scanProductRepositories({
-  dependency,
-  dependencyVersion,
   retainedClones,
 }: {
-  dependency: string
-  dependencyVersion: string
   retainedClones: Map<string, RetainedClone>
 }): Promise<{
   scannedRepositories: ScannedProductRepository[]
@@ -483,13 +497,7 @@ async function scanProductRepositories({
       })
       scannedRepositories.push(scannedRepository)
 
-      const [candidate] = getDependentCandidates({
-        scannedRepositories: [scannedRepository],
-        dependency,
-        dependencyVersion,
-      })
-
-      if (candidate) {
+      if (scannedRepository.supportsDependencyUpdates) {
         retainedClones.set(productRepository.repositoryName, {
           repositoryWorkingDirectory,
           removeRepositoryWorkingDirectory,
@@ -544,22 +552,93 @@ async function readScannedProductRepository({
   }
 }
 
-function getRetainedWorkingDirectory({
+function getRepositoryNamesToRetain({
+  candidates,
+  intermediates,
+  scannedRepositories,
+}: {
+  candidates: DependentCandidate[]
+  intermediates: DependentCandidate[]
+  scannedRepositories: ScannedProductRepository[]
+}): Set<string> {
+  const intermediatePackageNames = new Set(
+    intermediates.map((intermediate) => intermediate.packageName),
+  )
+  const repositoryNamesToRetain = new Set(
+    candidates.map((candidate) => candidate.productRepository.repositoryName),
+  )
+
+  for (const scannedRepository of scannedRepositories) {
+    const dependsOnIntermediate = [...intermediatePackageNames].some(
+      (packageName) => scannedRepository.dependencies[packageName],
+    )
+    if (dependsOnIntermediate) {
+      repositoryNamesToRetain.add(
+        scannedRepository.productRepository.repositoryName,
+      )
+    }
+  }
+
+  return repositoryNamesToRetain
+}
+
+async function pruneRetainedClones({
   retainedClones,
-  candidate,
+  repositoryNamesToRetain,
 }: {
   retainedClones: Map<string, RetainedClone>
-  candidate: DependentCandidate
+  repositoryNamesToRetain: Set<string>
+}) {
+  for (const [repositoryName, retainedClone] of retainedClones) {
+    if (repositoryNamesToRetain.has(repositoryName)) {
+      continue
+    }
+    await retainedClone.removeRepositoryWorkingDirectory()
+    retainedClones.delete(repositoryName)
+  }
+}
+
+function getRetainedWorkingDirectory({
+  retainedClones,
+  repositoryName,
+}: {
+  retainedClones: Map<string, RetainedClone>
+  repositoryName: string
 }): string {
-  const retainedClone = retainedClones.get(
-    candidate.productRepository.repositoryName,
-  )
+  const retainedClone = retainedClones.get(repositoryName)
   if (!retainedClone) {
     throw new Error(
-      `Expected retained clone for "${candidate.productRepository.repositoryName}" but none was found.`,
+      `Expected retained clone for "${repositoryName}" but none was found.`,
     )
   }
   return retainedClone.repositoryWorkingDirectory
+}
+
+async function ensureRetainedWorkingDirectory({
+  retainedClones,
+  repositoryName,
+}: {
+  retainedClones: Map<string, RetainedClone>
+  repositoryName: string
+}): Promise<string> {
+  const existingClone = retainedClones.get(repositoryName)
+  if (existingClone) {
+    return existingClone.repositoryWorkingDirectory
+  }
+
+  const {
+    cloneRepository,
+    repositoryWorkingDirectory,
+    removeRepositoryWorkingDirectory,
+  } = await prepareCloneRepository({
+    repositoryName,
+  })
+  await cloneRepository()
+  retainedClones.set(repositoryName, {
+    repositoryWorkingDirectory,
+    removeRepositoryWorkingDirectory,
+  })
+  return repositoryWorkingDirectory
 }
 
 async function removeRetainedClones(

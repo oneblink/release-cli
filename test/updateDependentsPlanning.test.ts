@@ -6,6 +6,7 @@ import {
   getDependentCandidates,
   getDownstreamRepositoryNames,
   getIntermediateNpmDependents,
+  getRepositoriesNeedingDependencyUpdates,
   ScannedProductRepository,
 } from '../src/updateDependentsPlanning.js'
 
@@ -28,6 +29,13 @@ const formsRenderer = createProductRepository({
   repositoryName: 'product-forms-renderer',
   type: 'NODE_JS',
   isPublic: false,
+})
+
+const formsCdn = createProductRepository({
+  label: 'Embedded Forms Script',
+  repositoryName: 'forms-cdn',
+  type: 'CDN_HOSTING',
+  isPublic: true,
 })
 
 const nugetSdk = createProductRepository({
@@ -112,91 +120,197 @@ describe('getDependentCandidates', () => {
 })
 
 describe('getIntermediateNpmDependents', () => {
-  it('identifies NPM packages that other candidates also depend on', () => {
+  it('identifies NPM packages that other scanned repositories also depend on', () => {
+    const scannedRepositories = [
+      createScannedRepository({
+        productRepository: appsReact,
+        packageName: '@oneblink/apps-react',
+        packageVersion: '11.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsRenderer,
+        packageName: 'forms-renderer',
+        packageVersion: '2.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsCdn,
+        packageName: 'forms-cdn',
+        packageVersion: '1.0.0',
+        dependencies: {
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+    ]
     const candidates = getDependentCandidates({
-      scannedRepositories: [
-        createScannedRepository({
-          productRepository: appsReact,
-          packageName: '@oneblink/apps-react',
-          packageVersion: '11.0.0',
-          dependencies: {
-            '@oneblink/sdk-core': '^9.0.0',
-          },
-        }),
-        createScannedRepository({
-          productRepository: formsRenderer,
-          packageName: 'forms-renderer',
-          packageVersion: '2.0.0',
-          dependencies: {
-            '@oneblink/sdk-core': '^9.0.0',
-            '@oneblink/apps-react': '^11.0.0',
-          },
-        }),
-      ],
+      scannedRepositories,
       dependency: '@oneblink/sdk-core',
       dependencyVersion: '10.1.0',
     })
 
-    const intermediates = getIntermediateNpmDependents(candidates)
+    const intermediates = getIntermediateNpmDependents({
+      candidates,
+      scannedRepositories,
+    })
 
     expect(intermediates.map((candidate) => candidate.packageName)).toEqual([
       '@oneblink/apps-react',
     ])
   })
 
-  it('does not treat NODE_JS repositories as intermediate NPM packages', () => {
+  it('treats an NPM candidate as intermediate when only non-source dependents use it', () => {
+    const scannedRepositories = [
+      createScannedRepository({
+        productRepository: appsReact,
+        packageName: '@oneblink/apps-react',
+        packageVersion: '11.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsCdn,
+        packageName: 'forms-cdn',
+        packageVersion: '1.0.0',
+        dependencies: {
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+    ]
     const candidates = getDependentCandidates({
-      scannedRepositories: [
-        createScannedRepository({
-          productRepository: formsRenderer,
-          packageName: 'forms-renderer',
-          packageVersion: '2.0.0',
-          dependencies: {
-            '@oneblink/sdk-core': '^9.0.0',
-          },
-        }),
-      ],
+      scannedRepositories,
       dependency: '@oneblink/sdk-core',
       dependencyVersion: '10.1.0',
     })
 
-    expect(getIntermediateNpmDependents(candidates)).toEqual([])
+    expect(
+      getIntermediateNpmDependents({
+        candidates,
+        scannedRepositories,
+      }).map((candidate) => candidate.packageName),
+    ).toEqual(['@oneblink/apps-react'])
+  })
+
+  it('does not treat NODE_JS repositories as intermediate NPM packages', () => {
+    const scannedRepositories = [
+      createScannedRepository({
+        productRepository: formsRenderer,
+        packageName: 'forms-renderer',
+        packageVersion: '2.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+      }),
+    ]
+    const candidates = getDependentCandidates({
+      scannedRepositories,
+      dependency: '@oneblink/sdk-core',
+      dependencyVersion: '10.1.0',
+    })
+
+    expect(
+      getIntermediateNpmDependents({
+        candidates,
+        scannedRepositories,
+      }),
+    ).toEqual([])
   })
 })
 
 describe('getDownstreamRepositoryNames', () => {
-  it('returns repository names that depend on the intermediate package', () => {
+  it('includes repositories that depend on the intermediate even without the source package', () => {
+    const scannedRepositories = [
+      createScannedRepository({
+        productRepository: appsReact,
+        packageName: '@oneblink/apps-react',
+        packageVersion: '11.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsRenderer,
+        packageName: 'forms-renderer',
+        packageVersion: '2.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsCdn,
+        packageName: 'forms-cdn',
+        packageVersion: '1.0.0',
+        dependencies: {
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+    ]
     const candidates = getDependentCandidates({
-      scannedRepositories: [
-        createScannedRepository({
-          productRepository: appsReact,
-          packageName: '@oneblink/apps-react',
-          packageVersion: '11.0.0',
-          dependencies: {
-            '@oneblink/sdk-core': '^9.0.0',
-          },
-        }),
-        createScannedRepository({
-          productRepository: formsRenderer,
-          packageName: 'forms-renderer',
-          packageVersion: '2.0.0',
-          dependencies: {
-            '@oneblink/sdk-core': '^9.0.0',
-            '@oneblink/apps-react': '^11.0.0',
-          },
-        }),
-      ],
+      scannedRepositories,
       dependency: '@oneblink/sdk-core',
       dependencyVersion: '10.1.0',
     })
-    const [intermediate] = getIntermediateNpmDependents(candidates)
+    const [intermediate] = getIntermediateNpmDependents({
+      candidates,
+      scannedRepositories,
+    })
 
     expect(
       getDownstreamRepositoryNames({
-        candidates,
+        scannedRepositories,
         intermediate,
       }),
-    ).toEqual(['product-forms-renderer'])
+    ).toEqual(['product-forms-renderer', 'forms-cdn'])
+  })
+})
+
+describe('getRepositoriesNeedingDependencyUpdates', () => {
+  it('includes repositories that only depend on a released intermediate package', () => {
+    const scannedRepositories = [
+      createScannedRepository({
+        productRepository: appsReact,
+        packageName: '@oneblink/apps-react',
+        packageVersion: '11.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsRenderer,
+        packageName: 'forms-renderer',
+        packageVersion: '2.0.0',
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+      createScannedRepository({
+        productRepository: formsCdn,
+        packageName: 'forms-cdn',
+        packageVersion: '1.0.0',
+        dependencies: {
+          '@oneblink/apps-react': '^11.0.0',
+        },
+      }),
+    ]
+
+    expect(
+      getRepositoriesNeedingDependencyUpdates({
+        scannedRepositories,
+        releasedPackageVersions: new Map([
+          ['@oneblink/sdk-core', '10.1.0'],
+          ['@oneblink/apps-react', '11.2.0'],
+        ]),
+        excludeRepositoryNames: new Set(['apps-react']),
+      }).map((candidate) => candidate.productRepository.repositoryName),
+    ).toEqual(['product-forms-renderer', 'forms-cdn'])
   })
 })
 

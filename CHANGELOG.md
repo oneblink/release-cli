@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **[BREAKING]** `--force` for `update-dependents` now skips all prompts and requires `--ticket` (use `--force-update-dependency` for the previous behaviour)
+- `update-dependents` also bumps repositories that depend on newly released intermediate NPM packages even when they do not depend on the original package
 
 ### Fixed
 
