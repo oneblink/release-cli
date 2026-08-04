@@ -53,8 +53,7 @@
     "npm": ">=11"
   },
   "files": [
-    "dist",
-    "patches"
+    "dist"
   ],
   "homepage": "https://github.com/oneblink/release-cli#readme",
   "keywords": [

@@ -144,6 +144,8 @@ ${body}
           parser: 'markdown',
         },
       )
+      // Prettier may emit platform line endings; keep CHANGELOG.md LF-only so
+      // parsing stays consistent across OSes without patching changelog-parser.
       await writeFileAsync(
         changelogPath,
         changelog.replaceAll(EOL, '\n'),
