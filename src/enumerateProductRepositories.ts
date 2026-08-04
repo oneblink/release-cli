@@ -46,12 +46,6 @@ export const productRepositories: readonly ProductRepository[] = [
     type: 'NODE_JS',
   },
   {
-    label: 'Cognito Hosted Login CSS',
-    repositoryName: 'product-cognito-hosted-login-css',
-    isPublic: false,
-    type: 'NODE_JS',
-  },
-  {
     label: 'Console',
     repositoryName: 'product-console',
     isPublic: false,

@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - github action permissions to allow docs and github release jobs
 
+### Removed
+
+- `product-cognito-hosted-login-css` repository
+
 ## [4.0.0] - 2026-02-02
 
 ### Removed
