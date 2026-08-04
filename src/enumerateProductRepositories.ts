@@ -8,7 +8,7 @@ export type ProductRepository = {
   isPublic: boolean
 } & RepositoryType
 
-const productRepositories: ProductRepository[] = [
+export const productRepositories: readonly ProductRepository[] = [
   {
     label: '@oneblink/apps-react (NPM package)',
     repositoryName: 'apps-react',
