@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-08-04
+
 ### Changed
 
 - Parse `CHANGELOG.md` via text content instead of file path so `changelog-parser` no longer needs a `patch-package` EOL workaround
 - Remove leftover `patches` packaging references after dropping `patch-package`
+
+### Dependencies
+
+- no longer depend upon patch-package
 
 ## [5.0.0] - 2026-08-04
 
