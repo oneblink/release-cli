@@ -98,7 +98,7 @@ describe('waitForNpmPackageVersion', () => {
         pollIntervalMs: 10,
       }),
     ).rejects.toThrow(
-      'Timed out after 1000ms waiting for @oneblink/sdk-core@10.1.0 to be published to npm',
+      'Timed out after 1000ms waiting for @oneblink/sdk-core@10.1.0 to be published to npm. Investigate why the package was not published (for example CI or npm publish failures), then decide whether it is safe to run the command again from the beginning.',
     )
 
     nowSpy.mockRestore()
