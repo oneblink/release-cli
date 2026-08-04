@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `update-dependents` discovers intermediate NPM dependents at runtime, prompts to release them, waits for npm publish, and folds those versions into a single downstream pull request
 - `--update-dependents` flag to `oneblink-release repository` to wait for npm publish after release, then run `update-dependents`
+- `--force-update-dependency`, `--force-publish-intermediate-dependency`, and `--ticket` flags for `update-dependents`
+
+### Changed
+
+- **[BREAKING]** `--force` for `update-dependents` now skips all prompts and requires `--ticket` (use `--force-update-dependency` for the previous behaviour)
 
 ### Fixed
 

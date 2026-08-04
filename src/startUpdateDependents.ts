@@ -15,6 +15,7 @@ import promptForNextVersion from './promptForNextVersion.js'
 import promptForReleaseName from './promptForReleaseName.js'
 import startRepositoryRelease from './startRepositoryRelease.js'
 import getPreRelease from './getPreRelease.js'
+import semver from 'semver'
 import {
   buildDependencyBumpCommitMessage,
   DependentCandidate,
@@ -30,13 +31,25 @@ type RetainedClone = {
   removeRepositoryWorkingDirectory: () => Promise<void>
 }
 
+const TICKET_PATTERN = /^[a-z]{1,3}-\d+$/i
+
 export default async function startUpdateDependents({
   cwd,
   force = false,
+  forceUpdateDependency = false,
+  forcePublishIntermediateDependency = false,
+  ticket: ticketFlag,
 }: {
   cwd: string
   force?: boolean
+  forceUpdateDependency?: boolean
+  forcePublishIntermediateDependency?: boolean
+  ticket?: string
 }) {
+  const shouldForceUpdateDependency = force || forceUpdateDependency
+  const shouldForcePublishIntermediateDependency =
+    force || forcePublishIntermediateDependency
+
   const dependencyRepositoryPlugin = await getRepositoryPlugin({
     cwd,
   })
@@ -58,38 +71,13 @@ export default async function startUpdateDependents({
   const dependencyVersion = dependencyResult.packageJson.version
   console.log('Beginning to update the dependents of:', dependency)
 
-  const { ticket } = await enquirer.prompt<{
-    ticket: string
-  }>({
-    type: 'input',
-    name: 'ticket',
-    message: `Ticket to associate with pull requests? (e.g. ON-4323, AP-4323, MS-4323)`,
-    required: true,
-    validate: (input) => {
-      if (!/^[a-z]{1,3}-\d+$/i.test(input)) {
-        return 'Ticket must be 1-3 alpha characters, then a hyphen followed by a number'
-      }
-      return true
-    },
-    result: (input) => input.toUpperCase(),
+  const ticket = await resolveTicket({
+    ticketFlag,
+    force,
   })
 
-  const { isUpdatingTypes } = await enquirer.prompt<{
-    isUpdatingTypes: 'yes' | 'no'
-  }>({
-    type: 'select',
-    name: 'isUpdatingTypes',
-    message: `Would you like to update "@oneblink/types" as well?`,
-    choices: [
-      {
-        message: 'Yes, update @oneblink/types',
-        name: 'yes',
-      },
-      {
-        message: 'No! "@oneblink/types" does not need to be updated.',
-        name: 'no',
-      },
-    ],
+  const isUpdatingTypes = await resolveIsUpdatingTypes({
+    force,
   })
 
   const { scannedRepositories, retainedClones } = await scanProductRepositories(
@@ -137,23 +125,32 @@ export default async function startUpdateDependents({
         intermediate,
       })
 
-      const { shouldRelease } = await enquirer.prompt<{
-        shouldRelease: 'yes' | 'no'
-      }>({
-        type: 'select',
-        name: 'shouldRelease',
-        message: `"${intermediate.productRepository.repositoryName}" (${intermediate.packageName}) also needs a release because it is depended on by: ${downstreamRepositoryNames.join(', ')}. Update "${dependency}" and release "${intermediate.packageName}" now so downstream pull requests can include both version bumps?`,
-        choices: [
-          {
-            message: `Yes, update and release "${intermediate.packageName}"`,
-            name: 'yes',
-          },
-          {
-            message: `No, only open a dependency bump pull request for "${intermediate.productRepository.repositoryName}"`,
-            name: 'no',
-          },
-        ],
-      })
+      let shouldRelease: 'yes' | 'no'
+      if (shouldForcePublishIntermediateDependency) {
+        shouldRelease = 'yes'
+        console.log(
+          `Auto-releasing "${intermediate.packageName}" because it is depended on by: ${downstreamRepositoryNames.join(', ')}`,
+        )
+      } else {
+        const releaseResult = await enquirer.prompt<{
+          shouldRelease: 'yes' | 'no'
+        }>({
+          type: 'select',
+          name: 'shouldRelease',
+          message: `"${intermediate.productRepository.repositoryName}" (${intermediate.packageName}) also needs a release because it is depended on by: ${downstreamRepositoryNames.join(', ')}. Update "${dependency}" and release "${intermediate.packageName}" now so downstream pull requests can include both version bumps?`,
+          choices: [
+            {
+              message: `Yes, update and release "${intermediate.packageName}"`,
+              name: 'yes',
+            },
+            {
+              message: `No, only open a dependency bump pull request for "${intermediate.productRepository.repositoryName}"`,
+              name: 'no',
+            },
+          ],
+        })
+        shouldRelease = releaseResult.shouldRelease
+      }
 
       if (shouldRelease === 'no') {
         console.log(
@@ -194,13 +191,13 @@ export default async function startUpdateDependents({
         cwd: repositoryWorkingDirectory,
         repositoryType: intermediate.productRepository,
       })
-      const { nextVersion } = await promptForNextVersion({
+      const nextVersion = await resolveNextVersion({
         repositoryPlugin,
-        noPreRelease: false,
+        force,
       })
       const preRelease = getPreRelease(nextVersion)
       const releaseName =
-        intermediate.productRepository.isPublic || preRelease
+        force || intermediate.productRepository.isPublic || preRelease
           ? undefined
           : await promptForReleaseName()
 
@@ -231,7 +228,7 @@ export default async function startUpdateDependents({
       }
 
       let isUpdating: 'yes' | 'no'
-      if (force) {
+      if (shouldForceUpdateDependency) {
         isUpdating = 'yes'
         console.log(
           `Auto-updating "${dependency}" in "${candidate.productRepository.repositoryName}" (${candidate.currentSourceDependencyVersion} > ${dependencyVersion})`,
@@ -331,6 +328,127 @@ export default async function startUpdateDependents({
   } finally {
     await removeRetainedClones(retainedClones)
   }
+}
+
+async function resolveTicket({
+  ticketFlag,
+  force,
+}: {
+  ticketFlag: string | undefined
+  force: boolean
+}): Promise<string> {
+  if (ticketFlag) {
+    if (!TICKET_PATTERN.test(ticketFlag)) {
+      throw new Error(
+        'Ticket must be 1-3 alpha characters, then a hyphen followed by a number',
+      )
+    }
+    return ticketFlag.toUpperCase()
+  }
+
+  if (force) {
+    throw new Error(
+      'Cannot use "--force" without "--ticket" because all prompts are skipped.',
+    )
+  }
+
+  const { ticket } = await enquirer.prompt<{
+    ticket: string
+  }>({
+    type: 'input',
+    name: 'ticket',
+    message: `Ticket to associate with pull requests? (e.g. ON-4323, AP-4323, MS-4323)`,
+    required: true,
+    validate: (input) => {
+      if (!TICKET_PATTERN.test(input)) {
+        return 'Ticket must be 1-3 alpha characters, then a hyphen followed by a number'
+      }
+      return true
+    },
+    result: (input) => input.toUpperCase(),
+  })
+
+  return ticket
+}
+
+async function resolveIsUpdatingTypes({
+  force,
+}: {
+  force: boolean
+}): Promise<'yes' | 'no'> {
+  if (force) {
+    console.log(
+      'Skipping "@oneblink/types" update because "--force" was provided.',
+    )
+    return 'no'
+  }
+
+  const { isUpdatingTypes } = await enquirer.prompt<{
+    isUpdatingTypes: 'yes' | 'no'
+  }>({
+    type: 'select',
+    name: 'isUpdatingTypes',
+    message: `Would you like to update "@oneblink/types" as well?`,
+    choices: [
+      {
+        message: 'Yes, update @oneblink/types',
+        name: 'yes',
+      },
+      {
+        message: 'No! "@oneblink/types" does not need to be updated.',
+        name: 'no',
+      },
+    ],
+  })
+
+  return isUpdatingTypes
+}
+
+async function resolveNextVersion({
+  repositoryPlugin,
+  force,
+}: {
+  repositoryPlugin: Awaited<ReturnType<typeof getRepositoryPlugin>>
+  force: boolean
+}): Promise<string> {
+  if (!force) {
+    const { nextVersion } = await promptForNextVersion({
+      repositoryPlugin,
+      noPreRelease: false,
+    })
+    return nextVersion
+  }
+
+  const currentVersion = await repositoryPlugin.getCurrentVersion()
+  const currentSemverVersion = semver.parse(currentVersion)
+  if (!currentSemverVersion) {
+    throw new Error(
+      `Could not determine current version for ${repositoryPlugin.displayType} repository: ${repositoryPlugin.cwd}`,
+    )
+  }
+
+  const autoIncrementVersion =
+    await repositoryPlugin.autoIncrementVersion?.(currentSemverVersion)
+  if (autoIncrementVersion) {
+    console.log(
+      `Auto-selecting next version "${autoIncrementVersion}" because "--force" was provided.`,
+    )
+    return autoIncrementVersion
+  }
+
+  const nextSemverVersion = currentSemverVersion.inc(
+    currentSemverVersion.prerelease.length ? 'prerelease' : 'patch',
+  )
+  if (!nextSemverVersion) {
+    throw new Error(
+      `Could not auto-increment version "${currentVersion}" because "--force" was provided.`,
+    )
+  }
+
+  console.log(
+    `Auto-selecting next version "${nextSemverVersion.version}" because "--force" was provided.`,
+  )
+  return nextSemverVersion.version
 }
 
 async function scanProductRepositories({
