@@ -80,14 +80,15 @@ export default async function startUpdateDependents({
     force,
   })
 
-  const { scannedRepositories, retainedClones } = await scanProductRepositories(
-    {
-      dependency,
-      dependencyVersion,
-    },
-  )
+  const retainedClones = new Map<string, RetainedClone>()
 
   try {
+    const { scannedRepositories } = await scanProductRepositories({
+      dependency,
+      dependencyVersion,
+      retainedClones,
+    })
+
     const candidates = getDependentCandidates({
       scannedRepositories,
       dependency,
@@ -454,15 +455,15 @@ async function resolveNextVersion({
 async function scanProductRepositories({
   dependency,
   dependencyVersion,
+  retainedClones,
 }: {
   dependency: string
   dependencyVersion: string
+  retainedClones: Map<string, RetainedClone>
 }): Promise<{
   scannedRepositories: ScannedProductRepository[]
-  retainedClones: Map<string, RetainedClone>
 }> {
   const scannedRepositories: ScannedProductRepository[] = []
-  const retainedClones = new Map<string, RetainedClone>()
 
   for (const productRepository of productRepositories) {
     const {
@@ -504,7 +505,6 @@ async function scanProductRepositories({
 
   return {
     scannedRepositories,
-    retainedClones,
   }
 }
 
