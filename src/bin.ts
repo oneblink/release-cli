@@ -14,6 +14,8 @@ import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import startUpdateDependents from './startUpdateDependents.js'
+import waitForNpmPackageVersion from './waitForNpmPackageVersion.js'
+import { readPackageUp } from 'read-package-up'
 
 const cli = meow(
   `
@@ -33,32 +35,50 @@ ${chalk.bold('Examples')}
   oneblink-release product --name="Inappropriate Release Name"
 
 ${chalk.bold.blue(
-  'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path]',
+  'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
 )}
 
 ${chalk.grey('Release a single repository.')}
 
-  next-version ..... The next version, will prompt for this if not supplied,
-                     must be a valid semver number.
+  next-version ............................. The next version, will prompt for this if not supplied,
+                                             must be a valid semver number.
 
-    --no-git ....... Skip committing changes and creating an annotated git tag.
+    --no-git ............................... Skip committing changes and creating an annotated git tag.
 
-    --increment .... Increment the version automatically using "major" | "minor" | "patch".
+    --increment ............................ Increment the version automatically using "major" | "minor" | "patch".
 
-    --name ......... Skip the question to enter a name for the release by passing
-                     a release name as a flag.
+    --name ................................. Skip the question to enter a name for the release by passing
+                                             a release name as a flag.
 
-    --no-name ...... Skip the question to enter a name for the release. Use
-                     option when running a release for an open source repository.
+    --no-name .............................. Skip the question to enter a name for the release. Use
+                                             option when running a release for an open source repository.
 
-    --cwd .......... Directory of the repository to release relative to the
-                     current working directory, defaults to the current
-                     working directory.
+    --cwd .................................. Directory of the repository to release relative to the
+                                             current working directory, defaults to the current
+                                             working directory.
+
+    --update-dependents .................... After the release is tagged, wait for the NPM package to be
+                                             published, then run update-dependents.
+
+    --force ................................ When used with --update-dependents, skip all update-dependents
+                                             prompts. Requires --ticket.
+
+    --force-update-dependency .............. When used with --update-dependents, skip prompts confirming
+                                             dependency updates.
+
+    --force-publish-intermediate-dependency  When used with --update-dependents, skip prompts confirming
+                                             intermediate NPM package releases.
+
+    --ticket ............................... Ticket to associate with update-dependents pull requests
+                                             (e.g. ON-4323). Required with --force.
 
 ${chalk.bold('Examples')}
 
   oneblink-release repository
   oneblink-release repository --no-name
+  oneblink-release repository --no-name --update-dependents
+  oneblink-release repository --no-name --update-dependents --force-update-dependency
+  oneblink-release repository --no-name --update-dependents --force --ticket ON-4323
   oneblink-release repository --name="Inappropriate Release Name"
   oneblink-release repository --increment="major"
   oneblink-release repository --increment="minor"
@@ -67,19 +87,33 @@ ${chalk.bold('Examples')}
   oneblink-release repository 1.1.1 --cwd ../path/to/code
   oneblink-release repository 1.1.1-uat.1 --no-git
 
+${chalk.bold.blue(
+  'oneblink-release update-dependents [--cwd path] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
+)}
+
 ${chalk.grey('Update all product code bases that depend on an NPM package.')}
 
-  --cwd .......... Directory of the repository that is the dependency relative
-                   to the current working directory, defaults to the current
-                   working directory.
+  --cwd .................................... Directory of the repository that is the dependency relative
+                                             to the current working directory, defaults to the current
+                                             working directory.
 
-  --force ........ Update all dependencies without prompting the user.
+  --force .................................. Skip all prompts. Requires --ticket.
+
+  --force-update-dependency ................ Skip prompts confirming dependency updates.
+
+  --force-publish-intermediate-dependency .. Skip prompts confirming intermediate NPM package releases.
+
+  --ticket ................................. Ticket to associate with pull requests (e.g. ON-4323).
+                                             Required with --force.
 
 ${chalk.bold('Examples')}
 
   oneblink-release update-dependents
   oneblink-release update-dependents --cwd ../path/to/code
-  oneblink-release update-dependents --force
+  oneblink-release update-dependents --force-update-dependency
+  oneblink-release update-dependents --force-publish-intermediate-dependency
+  oneblink-release update-dependents --force-update-dependency --force-publish-intermediate-dependency
+  oneblink-release update-dependents --force --ticket ON-4323
 `,
   {
     importMeta: import.meta,
@@ -112,6 +146,21 @@ ${chalk.bold('Examples')}
       force: {
         type: 'boolean',
         default: false,
+      },
+      updateDependents: {
+        type: 'boolean',
+        default: false,
+      },
+      forceUpdateDependency: {
+        type: 'boolean',
+        default: false,
+      },
+      forcePublishIntermediateDependency: {
+        type: 'boolean',
+        default: false,
+      },
+      ticket: {
+        type: 'string',
       },
     },
   },
@@ -156,6 +205,10 @@ async function run(): Promise<void> {
       await startUpdateDependents({
         cwd,
         force: cli.flags.force,
+        forceUpdateDependency: cli.flags.forceUpdateDependency,
+        forcePublishIntermediateDependency:
+          cli.flags.forcePublishIntermediateDependency,
+        ticket: cli.flags.ticket,
       })
       break
     }
@@ -200,6 +253,47 @@ async function run(): Promise<void> {
         releaseName,
         repositoryPlugin,
       })
+
+      if (cli.flags.updateDependents) {
+        if (!cli.flags.git) {
+          throw new Error(
+            'Cannot use "--update-dependents" with "--no-git" because the package will not be published.',
+          )
+        }
+        if (!repositoryPlugin.supportsDependencyUpdates) {
+          throw new Error(
+            `"${repositoryPlugin.displayType}" repositories do not support updating dependents.`,
+          )
+        }
+
+        const packageResult = await readPackageUp({
+          cwd,
+        })
+        const packageName = packageResult?.packageJson.name
+        if (!packageName) {
+          throw new Error(
+            `Could not determine the package name for updating dependents in: ${cwd}`,
+          )
+        }
+        if (packageResult.packageJson.private) {
+          throw new Error(
+            `Cannot use "--update-dependents" for private package "${packageName}" because it is not published to npm.`,
+          )
+        }
+
+        await waitForNpmPackageVersion({
+          packageName,
+          version: input,
+        })
+        await startUpdateDependents({
+          cwd,
+          force: cli.flags.force,
+          forceUpdateDependency: cli.flags.forceUpdateDependency,
+          forcePublishIntermediateDependency:
+            cli.flags.forcePublishIntermediateDependency,
+          ticket: cli.flags.ticket,
+        })
+      }
       break
     }
     case undefined: {
