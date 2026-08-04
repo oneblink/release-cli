@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-08-04
+
 ### Added
 
 - `update-dependents` discovers intermediate NPM dependents at runtime, prompts to release them, waits for npm publish, and folds those versions into a single downstream pull request
