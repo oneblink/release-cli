@@ -14,7 +14,7 @@ import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import startUpdateDependents from './startUpdateDependents.js'
-import startAuditFix from './startAuditFix.js'
+import startFixVulnerabilities from './startFixVulnerabilities.js'
 import waitForNpmPackageVersion from './waitForNpmPackageVersion.js'
 import { readPackageUp } from 'read-package-up'
 
@@ -35,12 +35,14 @@ ${chalk.bold('Examples')}
   oneblink-release product
   oneblink-release product --name="Inappropriate Release Name"
 
-${chalk.bold.blue('oneblink-release audit-fix [--force] [--ticket]')}
+${chalk.bold.blue('oneblink-release fix-vulnerabilities [--force] [--ticket]')}
 
 ${chalk.grey(
-  `Run "npm audit fix --package-lock-only" across each Product repository. Where
-package-lock.json changes, create a shared branch, commit, push, and create pull
-requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
+  `Run "npm audit fix --package-lock-only" for NPM repositories and "dotnet
+package update --vulnerable" for NuGet repositories across each Product
+repository. Where dependency files change, create a shared branch, commit,
+push, and create pull requests when GITHUB_OAUTH_TOKEN is set (otherwise print
+create-PR URLs).`,
 )}
 
   --force ......... Skip the ticket prompt. Requires --ticket.
@@ -51,9 +53,9 @@ requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
 
 ${chalk.bold('Examples')}
 
-  oneblink-release audit-fix
-  oneblink-release audit-fix --ticket ON-4323
-  oneblink-release audit-fix --force --ticket ON-4323
+  oneblink-release fix-vulnerabilities
+  oneblink-release fix-vulnerabilities --ticket ON-4323
+  oneblink-release fix-vulnerabilities --force --ticket ON-4323
 
 ${chalk.bold.blue(
   'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
@@ -236,8 +238,8 @@ async function run(): Promise<void> {
       })
       break
     }
-    case 'audit-fix': {
-      await startAuditFix({
+    case 'fix-vulnerabilities': {
+      await startFixVulnerabilities({
         ticket: cli.flags.ticket,
         force: cli.flags.force,
       })

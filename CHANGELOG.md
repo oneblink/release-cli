@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rename `audit-fix` command to `fix-vulnerabilities`
+- `fix-vulnerabilities` also runs `dotnet package update --vulnerable` for NuGet repositories
+
 ## [5.1.0] - 2026-08-06
 
 ### Added
