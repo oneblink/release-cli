@@ -35,7 +35,7 @@ ${chalk.bold('Examples')}
   oneblink-release product
   oneblink-release product --name="Inappropriate Release Name"
 
-${chalk.bold.blue('oneblink-release audit-fix [--ticket]')}
+${chalk.bold.blue('oneblink-release audit-fix [--force] [--ticket]')}
 
 ${chalk.grey(
   `Run "npm audit fix --package-lock-only" across each Product repository. Where
@@ -43,13 +43,17 @@ package-lock.json changes, create a shared branch, commit, push, and create pull
 requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
 )}
 
+  --force ......... Skip the ticket prompt. Requires --ticket.
+
   --ticket ........ Ticket to use as the branch name and commit prefix
                    (e.g. ON-4323). Will prompt if not supplied.
+                   Required with --force.
 
 ${chalk.bold('Examples')}
 
   oneblink-release audit-fix
   oneblink-release audit-fix --ticket ON-4323
+  oneblink-release audit-fix --force --ticket ON-4323
 
 ${chalk.bold.blue(
   'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
@@ -235,6 +239,7 @@ async function run(): Promise<void> {
     case 'audit-fix': {
       await startAuditFix({
         ticket: cli.flags.ticket,
+        force: cli.flags.force,
       })
       break
     }

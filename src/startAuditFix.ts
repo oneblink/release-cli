@@ -13,10 +13,12 @@ import resolveTicket from './resolveTicket.js'
 
 export default async function startAuditFix({
   ticket: ticketFlag,
+  force = false,
 }: {
   ticket?: string
+  force?: boolean
 }) {
-  const ticket = await resolveTicket({ ticketFlag })
+  const ticket = await resolveTicket({ ticketFlag, force })
   const octokit = createPullRequestOctokit()
 
   console.log(
