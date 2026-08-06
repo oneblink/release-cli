@@ -22,7 +22,7 @@ export default async function startAuditFix({
   const octokit = createPullRequestOctokit()
 
   console.log(
-    `Beginning npm audit fix across product repositories using branch "${ticket}"`,
+    `Beginning audit fix across product repositories using branch "${ticket}"`,
   )
 
   const pullRequestUrls: string[] = []
@@ -35,37 +35,24 @@ export default async function startAuditFix({
       async ({ productRepository, repositoryWorkingDirectory }) => {
         const { repositoryName, type } = productRepository
 
-        if (type === 'NUGET') {
-          console.log(
-            `Skipping "${repositoryName}" as NuGet repositories do not support npm audit fix.`,
-          )
+        const auditFix =
+          type === 'NUGET'
+            ? await prepareNugetAuditFix({
+                cwd: repositoryWorkingDirectory,
+                repositoryName,
+                ticket,
+              })
+            : await prepareNpmAuditFix({
+                cwd: repositoryWorkingDirectory,
+                repositoryName,
+                ticket,
+              })
+
+        if (!auditFix) {
           return
         }
 
-        const packageLockPath = path.join(
-          repositoryWorkingDirectory,
-          'package-lock.json',
-        )
-        if (!(await fileExists(packageLockPath))) {
-          console.log(
-            `Skipping "${repositoryName}" as it does not contain a package-lock.json file.`,
-          )
-          return
-        }
-
-        await runNpmAuditFix(repositoryWorkingDirectory)
-
-        const packageLockChanged = await hasPackageLockChanges(
-          repositoryWorkingDirectory,
-        )
-        if (!packageLockChanged) {
-          console.log(
-            `Skipping "${repositoryName}" as npm audit fix did not change package-lock.json.`,
-          )
-          return
-        }
-
-        const commitMessage = `${ticket} # npm audit fix`
+        const { filesToStage, commitMessage, pullRequestBody } = auditFix
 
         await executeCommand(
           'git',
@@ -74,23 +61,9 @@ export default async function startAuditFix({
         )
         await executeCommand(
           'git',
-          ['add', 'package-lock.json'],
+          ['add', ...filesToStage],
           repositoryWorkingDirectory,
         )
-
-        // npm audit fix can also update package.json when dependency ranges change
-        const packageJsonChanged = await hasFileChanges(
-          repositoryWorkingDirectory,
-          'package.json',
-        )
-        if (packageJsonChanged) {
-          await executeCommand(
-            'git',
-            ['add', 'package.json'],
-            repositoryWorkingDirectory,
-          )
-        }
-
         await executeCommand(
           'git',
           ['commit', '--message', commitMessage],
@@ -107,7 +80,7 @@ export default async function startAuditFix({
           repositoryName,
           ticket,
           title: commitMessage,
-          body: 'Automated `npm audit fix`.',
+          body: pullRequestBody,
         })
 
         fixedRepositories.push(repositoryName)
@@ -124,8 +97,8 @@ export default async function startAuditFix({
       boxen(
         chalk[completedSuccessfully ? 'green' : 'yellow'](
           completedSuccessfully
-            ? 'npm audit fix complete!!!'
-            : 'npm audit fix stopped after an error',
+            ? 'audit fix complete!!!'
+            : 'audit fix stopped after an error',
         ),
         {
           padding: 1,
@@ -164,7 +137,7 @@ export default async function startAuditFix({
       )
     } else if (completedSuccessfully) {
       console.log(
-        boxen(chalk.blue('No package-lock.json changes were produced.'), {
+        boxen(chalk.blue('No dependency audit fixes were produced.'), {
           padding: 1,
         }),
       )
@@ -172,30 +145,119 @@ export default async function startAuditFix({
   }
 }
 
-async function runNpmAuditFix(cwd: string) {
-  const log = '"npm audit fix --package-lock-only --audit-level=none"'
+type AuditFixResult = {
+  filesToStage: string[]
+  commitMessage: string
+  pullRequestBody: string
+}
+
+async function prepareNpmAuditFix({
+  cwd,
+  repositoryName,
+  ticket,
+}: {
+  cwd: string
+  repositoryName: string
+  ticket: string
+}): Promise<AuditFixResult | undefined> {
+  const packageLockPath = path.join(cwd, 'package-lock.json')
+  if (!(await fileExists(packageLockPath))) {
+    console.log(
+      `Skipping "${repositoryName}" as it does not contain a package-lock.json file.`,
+    )
+    return
+  }
+
+  await runCommandAllowingRemainingVulnerabilities({
+    command: 'npm',
+    args: ['audit', 'fix', '--package-lock-only', '--audit-level=none'],
+    cwd,
+    hasChanges: () => hasFileChanges(cwd, 'package-lock.json'),
+  })
+
+  if (!(await hasFileChanges(cwd, 'package-lock.json'))) {
+    console.log(
+      `Skipping "${repositoryName}" as npm audit fix did not change package-lock.json.`,
+    )
+    return
+  }
+
+  const filesToStage = ['package-lock.json']
+
+  // npm audit fix can also update package.json when dependency ranges change
+  if (await hasFileChanges(cwd, 'package.json')) {
+    filesToStage.push('package.json')
+  }
+
+  return {
+    filesToStage,
+    commitMessage: `${ticket} # npm audit fix`,
+    pullRequestBody: 'Automated `npm audit fix`.',
+  }
+}
+
+async function prepareNugetAuditFix({
+  cwd,
+  repositoryName,
+  ticket,
+}: {
+  cwd: string
+  repositoryName: string
+  ticket: string
+}): Promise<AuditFixResult | undefined> {
+  await runCommandAllowingRemainingVulnerabilities({
+    command: 'dotnet',
+    args: ['package', 'update', '--vulnerable'],
+    cwd,
+    hasChanges: () => hasNugetPackageChanges(cwd),
+  })
+
+  const filesToStage = await getChangedNugetPackageFiles(cwd)
+  if (!filesToStage.length) {
+    console.log(
+      `Skipping "${repositoryName}" as dotnet package update --vulnerable did not change csproj files.`,
+    )
+    return
+  }
+
+  return {
+    filesToStage,
+    commitMessage: `${ticket} # dotnet package update --vulnerable`,
+    pullRequestBody: 'Automated `dotnet package update --vulnerable`.',
+  }
+}
+
+async function runCommandAllowingRemainingVulnerabilities({
+  command,
+  args,
+  cwd,
+  hasChanges,
+}: {
+  command: string
+  args: string[]
+  cwd: string
+  hasChanges: () => Promise<boolean>
+}) {
+  const log = `"${command} ${args.join(' ')}"`
   return await wrapWithLoading(
     {
       startText: `Running ${log}`,
       failText: `Failed to run ${log}`,
     },
     async (spinner) => {
-      // npm audit fix exits non-zero when vulnerabilities remain after applying fixes
-      const result = await execa(
-        'npm',
-        ['audit', 'fix', '--package-lock-only', '--audit-level=none'],
-        {
-          cwd,
-          reject: false,
-        },
-      )
+      // Both npm audit fix and dotnet package update --vulnerable can exit
+      // non-zero when vulnerabilities remain after applying available fixes
+      const result = await execa(command, args, {
+        cwd,
+        reject: false,
+      })
 
-      if (result.exitCode !== 0 && !(await hasPackageLockChanges(cwd))) {
+      if (result.exitCode !== 0 && !(await hasChanges())) {
         spinner.fail(`Failed to run ${log}`)
         throw new Error(
           result.stderr ||
             result.stdout ||
-            `npm audit fix --package-lock-only --audit-level=none failed with exit code ${result.exitCode}`,
+            `${command} ${args.join(' ')} failed with exit code ${result.exitCode}`,
         )
       }
 
@@ -205,8 +267,31 @@ async function runNpmAuditFix(cwd: string) {
   )
 }
 
-async function hasPackageLockChanges(cwd: string): Promise<boolean> {
-  return await hasFileChanges(cwd, 'package-lock.json')
+async function hasNugetPackageChanges(cwd: string): Promise<boolean> {
+  return (await getChangedNugetPackageFiles(cwd)).length > 0
+}
+
+async function getChangedNugetPackageFiles(cwd: string): Promise<string[]> {
+  const { stdout } = await execa(
+    'git',
+    ['status', '--porcelain', '--', '*.csproj'],
+    {
+      cwd,
+    },
+  )
+
+  return stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      // Porcelain status is always 2 characters followed by a space
+      const pathPart = line.slice(3)
+      const renameSeparator = ' -> '
+      const renameIndex = pathPart.indexOf(renameSeparator)
+      return renameIndex === -1
+        ? pathPart.trim()
+        : pathPart.slice(renameIndex + renameSeparator.length).trim()
+    })
 }
 
 async function hasFileChanges(cwd: string, fileName: string): Promise<boolean> {
