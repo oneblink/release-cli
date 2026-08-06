@@ -26,13 +26,15 @@ import {
   getRepositoriesNeedingDependencyUpdates,
   ScannedProductRepository,
 } from './updateDependentsPlanning.js'
+import createOrLinkPullRequest, {
+  createPullRequestOctokit,
+} from './createOrLinkPullRequest.js'
+import resolveTicket from './resolveTicket.js'
 
 type RetainedClone = {
   repositoryWorkingDirectory: string
   removeRepositoryWorkingDirectory: () => Promise<void>
 }
-
-const TICKET_PATTERN = /^[a-z]{1,3}-\d+$/i
 
 export default async function startUpdateDependents({
   cwd,
@@ -129,7 +131,9 @@ export default async function startUpdateDependents({
     ])
     const releasedRepositoryNames = new Set<string>()
     const releasedPackageSummaries: string[] = []
-    const createPullRequestUrls: string[] = []
+    const pullRequestUrls: string[] = []
+    let createdAnyPullRequest = false
+    const octokit = createPullRequestOctokit()
 
     for (const intermediate of sortedIntermediates) {
       const downstreamRepositoryNames = getDownstreamRepositoryNames({
@@ -301,6 +305,11 @@ export default async function startUpdateDependents({
         continue
       }
 
+      const commitMessage = buildDependencyBumpCommitMessage({
+        ticket,
+        bumpedPackageNames,
+        isUpdatingTypes: isUpdatingTypes === 'yes',
+      })
       await commitDependencyUpdates({
         cwd: repositoryWorkingDirectory,
         ticket,
@@ -312,9 +321,16 @@ export default async function startUpdateDependents({
         ['push', '-u', 'origin', ticket],
         repositoryWorkingDirectory,
       )
-      createPullRequestUrls.push(
-        `https://github.com/oneblink/${candidate.productRepository.repositoryName}/pull/new/${ticket}`,
-      )
+      const pullRequest = await createOrLinkPullRequest({
+        octokit,
+        repositoryName: candidate.productRepository.repositoryName,
+        ticket,
+        title: commitMessage,
+      })
+      pullRequestUrls.push(pullRequest.url)
+      if (pullRequest.created) {
+        createdAnyPullRequest = true
+      }
     }
 
     if (releasedPackageSummaries.length) {
@@ -331,12 +347,15 @@ export default async function startUpdateDependents({
       )
     }
 
-    if (createPullRequestUrls.length) {
+    if (pullRequestUrls.length) {
+      const pullRequestHeading = createdAnyPullRequest
+        ? 'The following Pull Requests were created:'
+        : 'The following Pull Requests can be created:'
       console.log(
         boxen(
-          `The following Pull Requests can be created:
+          `${pullRequestHeading}
 
-  ${createPullRequestUrls.join(`
+  ${pullRequestUrls.join(`
   `)}`,
           {
             padding: 1,
@@ -347,47 +366,6 @@ export default async function startUpdateDependents({
   } finally {
     await removeRetainedClones(retainedClones)
   }
-}
-
-async function resolveTicket({
-  ticketFlag,
-  force,
-}: {
-  ticketFlag: string | undefined
-  force: boolean
-}): Promise<string> {
-  if (ticketFlag) {
-    if (!TICKET_PATTERN.test(ticketFlag)) {
-      throw new Error(
-        'Ticket must be 1-3 alpha characters, then a hyphen followed by a number',
-      )
-    }
-    return ticketFlag.toUpperCase()
-  }
-
-  if (force) {
-    throw new Error(
-      'Cannot use "--force" without "--ticket" because all prompts are skipped.',
-    )
-  }
-
-  const { ticket } = await enquirer.prompt<{
-    ticket: string
-  }>({
-    type: 'input',
-    name: 'ticket',
-    message: `Ticket to associate with pull requests? (e.g. ON-4323, AP-4323, MS-4323)`,
-    required: true,
-    validate: (input) => {
-      if (!TICKET_PATTERN.test(input)) {
-        return 'Ticket must be 1-3 alpha characters, then a hyphen followed by a number'
-      }
-      return true
-    },
-    result: (input) => input.toUpperCase(),
-  })
-
-  return ticket
 }
 
 async function resolveIsUpdatingTypes({

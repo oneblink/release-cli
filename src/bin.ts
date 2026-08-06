@@ -14,6 +14,7 @@ import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import startUpdateDependents from './startUpdateDependents.js'
+import startAuditFix from './startAuditFix.js'
 import waitForNpmPackageVersion from './waitForNpmPackageVersion.js'
 import { readPackageUp } from 'read-package-up'
 
@@ -33,6 +34,22 @@ ${chalk.bold('Examples')}
 
   oneblink-release product
   oneblink-release product --name="Inappropriate Release Name"
+
+${chalk.bold.blue('oneblink-release audit-fix [--ticket]')}
+
+${chalk.grey(
+  `Run "npm audit fix --package-lock-only" across each Product repository. Where
+package-lock.json changes, create a shared branch, commit, push, and create pull
+requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
+)}
+
+  --ticket ........ Ticket to use as the branch name and commit prefix
+                   (e.g. ON-4323). Will prompt if not supplied.
+
+${chalk.bold('Examples')}
+
+  oneblink-release audit-fix
+  oneblink-release audit-fix --ticket ON-4323
 
 ${chalk.bold.blue(
   'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
@@ -91,7 +108,10 @@ ${chalk.bold.blue(
   'oneblink-release update-dependents [--cwd path] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
 )}
 
-${chalk.grey('Update all product code bases that depend on an NPM package.')}
+${chalk.grey(
+  `Update all product code bases that depend on an NPM package. Creates pull
+requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
+)}
 
   --cwd .................................... Directory of the repository that is the dependency relative
                                              to the current working directory, defaults to the current
@@ -208,6 +228,12 @@ async function run(): Promise<void> {
         forceUpdateDependency: cli.flags.forceUpdateDependency,
         forcePublishIntermediateDependency:
           cli.flags.forcePublishIntermediateDependency,
+        ticket: cli.flags.ticket,
+      })
+      break
+    }
+    case 'audit-fix': {
+      await startAuditFix({
         ticket: cli.flags.ticket,
       })
       break
