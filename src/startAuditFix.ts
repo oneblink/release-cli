@@ -28,135 +28,147 @@ export default async function startAuditFix({
   const pullRequestUrls: string[] = []
   const fixedRepositories: string[] = []
   let createdAnyPullRequest = false
+  let completedSuccessfully = false
 
-  await enumerateProductRepositories(
-    async ({ productRepository, repositoryWorkingDirectory }) => {
-      const { repositoryName, type } = productRepository
+  try {
+    await enumerateProductRepositories(
+      async ({ productRepository, repositoryWorkingDirectory }) => {
+        const { repositoryName, type } = productRepository
 
-      if (type === 'NUGET') {
-        console.log(
-          `Skipping "${repositoryName}" as NuGet repositories do not support npm audit fix.`,
+        if (type === 'NUGET') {
+          console.log(
+            `Skipping "${repositoryName}" as NuGet repositories do not support npm audit fix.`,
+          )
+          return
+        }
+
+        const packageLockPath = path.join(
+          repositoryWorkingDirectory,
+          'package-lock.json',
         )
-        return
-      }
+        if (!(await fileExists(packageLockPath))) {
+          console.log(
+            `Skipping "${repositoryName}" as it does not contain a package-lock.json file.`,
+          )
+          return
+        }
 
-      const packageLockPath = path.join(
-        repositoryWorkingDirectory,
-        'package-lock.json',
-      )
-      if (!(await fileExists(packageLockPath))) {
-        console.log(
-          `Skipping "${repositoryName}" as it does not contain a package-lock.json file.`,
-        )
-        return
-      }
+        await runNpmAuditFix(repositoryWorkingDirectory)
 
-      await runNpmAuditFix(repositoryWorkingDirectory)
-
-      const packageLockChanged = await hasPackageLockChanges(
-        repositoryWorkingDirectory,
-      )
-      if (!packageLockChanged) {
-        console.log(
-          `Skipping "${repositoryName}" as npm audit fix did not change package-lock.json.`,
-        )
-        return
-      }
-
-      const commitMessage = `${ticket} # npm audit fix`
-
-      await executeCommand(
-        'git',
-        ['checkout', '-b', ticket],
-        repositoryWorkingDirectory,
-      )
-      await executeCommand(
-        'git',
-        ['add', 'package-lock.json'],
-        repositoryWorkingDirectory,
-      )
-
-      // npm audit fix can also update package.json when dependency ranges change
-      const packageJsonChanged = await hasFileChanges(
-        repositoryWorkingDirectory,
-        'package.json',
-      )
-      if (packageJsonChanged) {
-        await executeCommand(
-          'git',
-          ['add', 'package.json'],
+        const packageLockChanged = await hasPackageLockChanges(
           repositoryWorkingDirectory,
         )
-      }
+        if (!packageLockChanged) {
+          console.log(
+            `Skipping "${repositoryName}" as npm audit fix did not change package-lock.json.`,
+          )
+          return
+        }
 
-      await executeCommand(
-        'git',
-        ['commit', '--message', commitMessage],
-        repositoryWorkingDirectory,
-      )
-      await executeCommand(
-        'git',
-        ['push', '-u', 'origin', ticket],
-        repositoryWorkingDirectory,
-      )
+        const commitMessage = `${ticket} # npm audit fix`
 
-      const pullRequest = await createOrLinkPullRequest({
-        octokit,
-        repositoryName,
-        ticket,
-        title: commitMessage,
-        body: 'Automated `npm audit fix`.',
-      })
+        await executeCommand(
+          'git',
+          ['checkout', '-b', ticket],
+          repositoryWorkingDirectory,
+        )
+        await executeCommand(
+          'git',
+          ['add', 'package-lock.json'],
+          repositoryWorkingDirectory,
+        )
 
-      fixedRepositories.push(repositoryName)
-      pullRequestUrls.push(pullRequest.url)
-      if (pullRequest.created) {
-        createdAnyPullRequest = true
-      }
-    },
-  )
+        // npm audit fix can also update package.json when dependency ranges change
+        const packageJsonChanged = await hasFileChanges(
+          repositoryWorkingDirectory,
+          'package.json',
+        )
+        if (packageJsonChanged) {
+          await executeCommand(
+            'git',
+            ['add', 'package.json'],
+            repositoryWorkingDirectory,
+          )
+        }
 
-  console.log(
-    boxen(chalk.green('npm audit fix complete!!!'), {
-      padding: 1,
-    }),
-  )
+        await executeCommand(
+          'git',
+          ['commit', '--message', commitMessage],
+          repositoryWorkingDirectory,
+        )
+        await executeCommand(
+          'git',
+          ['push', '-u', 'origin', ticket],
+          repositoryWorkingDirectory,
+        )
 
-  if (fixedRepositories.length) {
+        const pullRequest = await createOrLinkPullRequest({
+          octokit,
+          repositoryName,
+          ticket,
+          title: commitMessage,
+          body: 'Automated `npm audit fix`.',
+        })
+
+        fixedRepositories.push(repositoryName)
+        pullRequestUrls.push(pullRequest.url)
+        if (pullRequest.created) {
+          createdAnyPullRequest = true
+        }
+      },
+    )
+
+    completedSuccessfully = true
+  } finally {
     console.log(
       boxen(
-        `The following repositories had fixes applied:
+        chalk[completedSuccessfully ? 'green' : 'yellow'](
+          completedSuccessfully
+            ? 'npm audit fix complete!!!'
+            : 'npm audit fix stopped after an error',
+        ),
+        {
+          padding: 1,
+        },
+      ),
+    )
+
+    if (fixedRepositories.length) {
+      console.log(
+        boxen(
+          `The following repositories had fixes applied:
 
   ${fixedRepositories.join(`
   `)}`,
-        {
-          padding: 1,
-        },
-      ),
-    )
-  }
+          {
+            padding: 1,
+          },
+        ),
+      )
+    }
 
-  if (pullRequestUrls.length) {
-    const pullRequestHeading = createdAnyPullRequest
-      ? 'The following Pull Requests were created:'
-      : 'The following Pull Requests can be created:'
-    console.log(
-      boxen(
-        `${pullRequestHeading}
+    if (pullRequestUrls.length) {
+      const pullRequestHeading = createdAnyPullRequest
+        ? 'The following Pull Requests were created:'
+        : 'The following Pull Requests can be created:'
+      console.log(
+        boxen(
+          `${pullRequestHeading}
 
   ${pullRequestUrls.join(`
   `)}`,
-        {
+          {
+            padding: 1,
+          },
+        ),
+      )
+    } else if (completedSuccessfully) {
+      console.log(
+        boxen(chalk.blue('No package-lock.json changes were produced.'), {
           padding: 1,
-        },
-      ),
-    )
-  } else {
-    console.log(
-      boxen(chalk.blue('No package-lock.json changes were produced.'), {
-        padding: 1,
-      }),
-    )
+        }),
+      )
+    }
   }
 }
 
