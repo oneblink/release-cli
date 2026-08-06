@@ -1,5 +1,11 @@
 import { SemVer } from 'semver'
 
+export type FixVulnerabilitiesResult = {
+  filesToStage: string[]
+  commitMessage: string
+  pullRequestBody: string
+}
+
 export interface RepositoryPlugin {
   isDeploymentRequired: boolean
   supportsDependencyUpdates: boolean
@@ -20,4 +26,9 @@ export interface RepositoryPlugin {
     | { result: 'ENTRIES'; entries: string | undefined }
     | { result: 'WARNING'; message: string }
   >
+
+  fixVulnerabilities?: (options: {
+    ticket: string
+    repositoryName: string
+  }) => Promise<FixVulnerabilitiesResult | undefined>
 }

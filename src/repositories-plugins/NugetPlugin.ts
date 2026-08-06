@@ -2,7 +2,14 @@ import { readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { SemVer } from 'semver'
 import getPreRelease from '../getPreRelease.js'
-import { RepositoryPlugin } from './RepositoryPlugin.js'
+import {
+  getChangedFilesMatching,
+  runCommandAllowingRemainingVulnerabilities,
+} from './fix-vulnerabilities-helpers.js'
+import {
+  FixVulnerabilitiesResult,
+  RepositoryPlugin,
+} from './RepositoryPlugin.js'
 
 export default class NugetPlugin implements RepositoryPlugin {
   isDeploymentRequired = false
@@ -48,5 +55,41 @@ export default class NugetPlugin implements RepositoryPlugin {
         }</AssemblyVersion>`,
       )
     await writeFile(projectFile, newFileContents, 'utf-8')
+  }
+
+  async fixVulnerabilities({
+    ticket,
+    repositoryName,
+  }: {
+    ticket: string
+    repositoryName: string
+  }): Promise<FixVulnerabilitiesResult | undefined> {
+    await runCommandAllowingRemainingVulnerabilities({
+      command: 'dotnet',
+      args: [
+        'package',
+        'update',
+        '--vulnerable',
+        '--project',
+        this.relativeProjectFile,
+      ],
+      cwd: this.cwd,
+      hasChanges: async () =>
+        (await getChangedFilesMatching(this.cwd, '*.csproj')).length > 0,
+    })
+
+    const filesToStage = await getChangedFilesMatching(this.cwd, '*.csproj')
+    if (!filesToStage.length) {
+      console.log(
+        `Skipping "${repositoryName}" as dotnet package update --vulnerable did not change csproj files.`,
+      )
+      return
+    }
+
+    return {
+      filesToStage,
+      commitMessage: `${ticket} # dotnet package update --vulnerable`,
+      pullRequestBody: 'Automated `dotnet package update --vulnerable`.',
+    }
   }
 }
