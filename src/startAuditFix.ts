@@ -41,6 +41,7 @@ export default async function startAuditFix({
                 cwd: repositoryWorkingDirectory,
                 repositoryName,
                 ticket,
+                relativeProjectFile: productRepository.relativeProjectFile,
               })
             : await prepareNpmAuditFix({
                 cwd: repositoryWorkingDirectory,
@@ -200,14 +201,22 @@ async function prepareNugetAuditFix({
   cwd,
   repositoryName,
   ticket,
+  relativeProjectFile,
 }: {
   cwd: string
   repositoryName: string
   ticket: string
+  relativeProjectFile: string
 }): Promise<AuditFixResult | undefined> {
   await runCommandAllowingRemainingVulnerabilities({
     command: 'dotnet',
-    args: ['package', 'update', '--vulnerable'],
+    args: [
+      'package',
+      'update',
+      '--vulnerable',
+      '--project',
+      relativeProjectFile,
+    ],
     cwd,
     hasChanges: () => hasNugetPackageChanges(cwd),
   })

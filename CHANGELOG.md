@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `audit-fix` passes `--project` to `dotnet package update --vulnerable` so nested NuGet project files are updated
+
 ### Changed
 
 - `audit-fix` also runs `dotnet package update --vulnerable` for NuGet repositories
