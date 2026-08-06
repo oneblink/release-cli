@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.1.0] - 2026-08-06
+
 ### Added
 
 - `oneblink-release audit-fix` command to run `npm audit fix --package-lock-only` across product repositories, commit lockfile fixes on a shared ticket branch, and create pull requests when `GITHUB_OAUTH_TOKEN` is set (otherwise print create-PR URLs)
