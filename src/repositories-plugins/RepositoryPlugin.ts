@@ -9,6 +9,7 @@ export type FixVulnerabilitiesResult = {
 export interface RepositoryPlugin {
   isDeploymentRequired: boolean
   supportsDependencyUpdates: boolean
+  waitForPublishedVersionAfterGitTag?: boolean
   displayType: string
   cwd: string
 
