@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- After tagging a NuGet repository release, poll nuget.org until the package version is available
+- `--update-dependents` uses the same polling helper so NPM and NuGet published-version checks stay consistent
+
 ### Changed
 
 - Rename `audit-fix` command to `fix-vulnerabilities`

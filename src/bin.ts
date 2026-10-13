@@ -15,8 +15,7 @@ import promptForReleaseName from './promptForReleaseName.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import startUpdateDependents from './startUpdateDependents.js'
 import startFixVulnerabilities from './startFixVulnerabilities.js'
-import waitForNpmPackageVersion from './waitForNpmPackageVersion.js'
-import { readPackageUp } from 'read-package-up'
+import waitForPluginPackageVersion from './waitForPluginPackageVersion.js'
 
 const cli = meow(
   `
@@ -80,8 +79,10 @@ ${chalk.grey('Release a single repository.')}
                                              current working directory, defaults to the current
                                              working directory.
 
-    --update-dependents .................... After the release is tagged, wait for the NPM package to be
-                                             published, then run update-dependents.
+    --update-dependents .................... After the release is tagged, wait for the NPM or NuGet package
+                                             to be published, then run update-dependents (NPM packages
+                                             only). NuGet repositories wait for nuget.org after tagging
+                                             even without this flag.
 
     --force ................................ When used with --update-dependents, skip all update-dependents
                                              prompts. Requires --ticket.
@@ -299,23 +300,8 @@ async function run(): Promise<void> {
           )
         }
 
-        const packageResult = await readPackageUp({
-          cwd,
-        })
-        const packageName = packageResult?.packageJson.name
-        if (!packageName) {
-          throw new Error(
-            `Could not determine the package name for updating dependents in: ${cwd}`,
-          )
-        }
-        if (packageResult.packageJson.private) {
-          throw new Error(
-            `Cannot use "--update-dependents" for private package "${packageName}" because it is not published to npm.`,
-          )
-        }
-
-        await waitForNpmPackageVersion({
-          packageName,
+        await waitForPluginPackageVersion({
+          repositoryPlugin,
           version: input,
         })
         await startUpdateDependents({
@@ -325,6 +311,14 @@ async function run(): Promise<void> {
           forcePublishIntermediateDependency:
             cli.flags.forcePublishIntermediateDependency,
           ticket: cli.flags.ticket,
+        })
+      } else if (
+        cli.flags.git &&
+        repositoryPlugin.waitForPublishedVersionAfterGitTag
+      ) {
+        await waitForPluginPackageVersion({
+          repositoryPlugin,
+          version: input,
         })
       }
       break

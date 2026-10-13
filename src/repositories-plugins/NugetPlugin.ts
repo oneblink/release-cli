@@ -14,6 +14,7 @@ import {
 export default class NugetPlugin implements RepositoryPlugin {
   isDeploymentRequired = false
   supportsDependencyUpdates = false
+  waitForPublishedVersionAfterGitTag = true
   displayType = 'Nuget'
 
   cwd: string
@@ -28,6 +29,17 @@ export default class NugetPlugin implements RepositoryPlugin {
   }) {
     this.cwd = cwd
     this.relativeProjectFile = relativeProjectFile
+  }
+
+  async getPackageId(): Promise<string> {
+    const projectFile = path.join(this.cwd, this.relativeProjectFile)
+    const file = await readFile(projectFile, 'utf-8')
+    const packageId = file.match(/<PackageId>(.*)<\/PackageId>/)?.[1]?.trim()
+    if (packageId) {
+      return packageId
+    }
+
+    return path.basename(this.relativeProjectFile, '.csproj')
   }
 
   async getCurrentVersion(): Promise<string | undefined> {
