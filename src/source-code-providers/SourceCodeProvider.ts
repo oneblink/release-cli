@@ -15,6 +15,10 @@ export type PushBranchForReviewResult = {
   created: boolean
 }
 
+export type SourceCodeProviderGitRemoteParser = {
+  fromGitRemote(remote: string): SourceCodeProvider | undefined
+}
+
 export abstract class SourceCodeProvider {
   abstract readonly displayName: string
   abstract readonly cloneUrl: string

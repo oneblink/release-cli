@@ -5,16 +5,45 @@ import {
   SourceCodeProvider,
 } from './SourceCodeProvider.js'
 
+function isGitLabHost(host: string): boolean {
+  const normalized = host.toLowerCase()
+  return normalized === 'gitlab.com' || normalized.endsWith('.gitlab.com')
+}
+
 export default class GitLabSourceCodeProvider extends SourceCodeProvider {
-  readonly displayName = 'GitLab'
+  static fromGitRemote(remote: string): GitLabSourceCodeProvider | undefined {
+    const ssh = /^git@([^:]+):(.+?)(?:\.git)?$/i
+    const https = /^https:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i
+
+    const match = remote.match(ssh) ?? remote.match(https)
+    if (!match || !isGitLabHost(match[1])) {
+      return undefined
+    }
+
+    return new GitLabSourceCodeProvider({
+      host: match[1],
+      projectPath: match[2],
+    })
+  }
+
+  readonly displayName: string
   readonly cloneUrl: string
   readonly webBase: string
 
   readonly host: string
   readonly projectPath: string
 
-  constructor({ host, projectPath }: { host: string; projectPath: string }) {
+  constructor({
+    host,
+    projectPath,
+    displayName = 'GitLab',
+  }: {
+    host: string
+    projectPath: string
+    displayName?: string
+  }) {
     super()
+    this.displayName = displayName
     this.host = host
     this.projectPath = projectPath.replace(/^\//, '').replace(/\.git$/, '')
     this.webBase = `https://${host}/${this.projectPath}`

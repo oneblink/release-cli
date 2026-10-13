@@ -2,7 +2,10 @@ import { execa } from 'execa'
 import DrupalGitSourceCodeProvider from './DrupalGitSourceCodeProvider.js'
 import GitHubSourceCodeProvider from './GitHubSourceCodeProvider.js'
 import GitLabSourceCodeProvider from './GitLabSourceCodeProvider.js'
-import { SourceCodeProvider } from './SourceCodeProvider.js'
+import {
+  SourceCodeProvider,
+  SourceCodeProviderGitRemoteParser,
+} from './SourceCodeProvider.js'
 import UnconfiguredSourceCodeProvider from './UnconfiguredSourceCodeProvider.js'
 
 export type SourceCodeProviderConfig =
@@ -20,6 +23,12 @@ export type SourceCodeProviderConfig =
       type: 'DRUPAL_GIT'
       projectName: string
     }
+
+const fromGitRemoteParsers: readonly SourceCodeProviderGitRemoteParser[] = [
+  GitHubSourceCodeProvider,
+  DrupalGitSourceCodeProvider,
+  GitLabSourceCodeProvider,
+]
 
 export default function createSourceCodeProvider(
   config: SourceCodeProviderConfig,
@@ -45,66 +54,6 @@ export default function createSourceCodeProvider(
   }
 }
 
-function createSourceCodeProviderFromGitRemote(
-  remote: string,
-): SourceCodeProvider | undefined {
-  const githubSsh = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i
-  const githubHttps = /^https:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/i
-  const drupalSsh = /^git@git\.drupal\.org:project\/([^/]+?)(?:\.git)?$/i
-  const gitlabSsh = /^git@([^:]+):(.+?)(?:\.git)?$/i
-  const gitlabHttps = /^https:\/\/([^/]+)\/(.+?)(?:\.git)?\/?$/i
-
-  let match = remote.match(githubSsh)
-  if (match) {
-    return new GitHubSourceCodeProvider({
-      owner: match[1],
-      repositoryName: match[2],
-    })
-  }
-
-  match = remote.match(githubHttps)
-  if (match) {
-    return new GitHubSourceCodeProvider({
-      owner: match[1],
-      repositoryName: match[2],
-    })
-  }
-
-  match = remote.match(drupalSsh)
-  if (match) {
-    return new DrupalGitSourceCodeProvider({
-      projectName: match[1],
-    })
-  }
-
-  match = remote.match(gitlabSsh)
-  if (match && isGitLabHost(match[1])) {
-    return new GitLabSourceCodeProvider({
-      host: match[1],
-      projectPath: match[2],
-    })
-  }
-
-  match = remote.match(gitlabHttps)
-  if (match && isGitLabHost(match[1])) {
-    return new GitLabSourceCodeProvider({
-      host: match[1],
-      projectPath: match[2],
-    })
-  }
-
-  return undefined
-}
-
-function isGitLabHost(host: string): boolean {
-  const normalized = host.toLowerCase()
-  return (
-    normalized === 'gitlab.com' ||
-    normalized.endsWith('.gitlab.com') ||
-    normalized.includes('gitlab')
-  )
-}
-
 export async function createSourceCodeProviderFromWorkingDirectory(
   cwd: string,
 ): Promise<SourceCodeProvider> {
@@ -113,9 +62,11 @@ export async function createSourceCodeProviderFromWorkingDirectory(
       cwd,
     })
     const remote = stdout.trim()
-    const provider = createSourceCodeProviderFromGitRemote(remote)
-    if (provider) {
-      return provider
+    for (const parser of fromGitRemoteParsers) {
+      const provider = parser.fromGitRemote(remote)
+      if (provider) {
+        return provider
+      }
     }
     return new UnconfiguredSourceCodeProvider({ cloneUrl: remote })
   } catch {
