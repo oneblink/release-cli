@@ -7,6 +7,7 @@ import NugetPlugin from './NugetPlugin.js'
 import NodeJsPlugin from './NodeJsPlugin.js'
 import CdnHostingPlugin from './CdnHostingPlugin.js'
 import DrupalModulePlugin from './DrupalModulePlugin.js'
+import { detectDrupalModuleInfoFile } from './detectDrupalModuleInfoFile.js'
 
 export type RepositoryType =
   | {
@@ -90,6 +91,15 @@ export default async function getRepositoryPlugin({
     return new NugetPlugin({
       cwd,
       relativeProjectFile: dotnetSdkProjectFile,
+      sourceCodeProvider,
+    })
+  }
+
+  const drupalModuleInfoFile = await detectDrupalModuleInfoFile(cwd)
+  if (drupalModuleInfoFile) {
+    return new DrupalModulePlugin({
+      cwd,
+      relativeInfoFile: drupalModuleInfoFile,
       sourceCodeProvider,
     })
   }

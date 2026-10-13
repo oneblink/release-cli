@@ -41,9 +41,19 @@ export default class DrupalModulePlugin implements RepositoryPlugin {
     }
 
     const infoPath = path.join(this.cwd, this.relativeInfoFile)
-    const info = await readFile(infoPath, 'utf-8')
-    const match = info.match(/^version:\s*['"]?([^'"\n]+)['"]?\s*$/m)
-    return match?.[1]
+    try {
+      const info = await readFile(infoPath, 'utf-8')
+      const match = info.match(/^version:\s*['"]?([^'"\n]+)['"]?\s*$/m)
+      if (match?.[1]) {
+        return match[1]
+      }
+    } catch {
+      // .info.yml missing or unreadable (composer.json was already checked above).
+    }
+
+    throw new Error(
+      `Could not determine the current version for Drupal module "${this.relativeInfoFile}". Set version in composer.json or ${this.relativeInfoFile}.`,
+    )
   }
 
   async incrementVersion(nextSemverVersion: SemVer): Promise<void> {
