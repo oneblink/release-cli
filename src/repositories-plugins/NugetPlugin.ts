@@ -6,6 +6,7 @@ import {
   getChangedFilesMatching,
   runCommandAllowingRemainingVulnerabilities,
 } from './fix-vulnerabilities-helpers.js'
+import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import {
   FixVulnerabilitiesResult,
   RepositoryPlugin,
@@ -18,16 +19,20 @@ export default class NugetPlugin implements RepositoryPlugin {
 
   cwd: string
   relativeProjectFile: string
+  sourceCodeProvider: SourceCodeProvider
 
   constructor({
     cwd,
     relativeProjectFile,
+    sourceCodeProvider,
   }: {
     cwd: string
     relativeProjectFile: string
+    sourceCodeProvider: SourceCodeProvider
   }) {
     this.cwd = cwd
     this.relativeProjectFile = relativeProjectFile
+    this.sourceCodeProvider = sourceCodeProvider
   }
 
   async getCurrentVersion(): Promise<string | undefined> {

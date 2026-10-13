@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { ProductRepository } from '../src/enumerateProductRepositories.js'
+import {
+  createGitHubProductRepository,
+  ProductRepository,
+} from '../src/enumerateProductRepositories.js'
 import {
   buildDependencyBumpCommitMessage,
   getDependencyInstallSpecs,
@@ -10,41 +13,51 @@ import {
   ScannedProductRepository,
 } from '../src/updateDependentsPlanning.js'
 
-const sdkCore = createProductRepository({
-  label: '@oneblink/sdk-core (NPM package)',
-  repositoryName: 'sdk-core-js',
-  type: 'NPM',
-  isPublic: true,
-})
+const sdkCore = createProductRepository(
+  createGitHubProductRepository({
+    label: '@oneblink/sdk-core (NPM package)',
+    repositoryName: 'sdk-core-js',
+    type: 'NPM',
+    isPublic: true,
+  }),
+)
 
-const appsReact = createProductRepository({
-  label: '@oneblink/apps-react (NPM package)',
-  repositoryName: 'apps-react',
-  type: 'NPM',
-  isPublic: true,
-})
+const appsReact = createProductRepository(
+  createGitHubProductRepository({
+    label: '@oneblink/apps-react (NPM package)',
+    repositoryName: 'apps-react',
+    type: 'NPM',
+    isPublic: true,
+  }),
+)
 
-const formsRenderer = createProductRepository({
-  label: 'Forms Renderer',
-  repositoryName: 'product-forms-renderer',
-  type: 'NODE_JS',
-  isPublic: false,
-})
+const formsRenderer = createProductRepository(
+  createGitHubProductRepository({
+    label: 'Forms Renderer',
+    repositoryName: 'product-forms-renderer',
+    type: 'NODE_JS',
+    isPublic: false,
+  }),
+)
 
-const formsCdn = createProductRepository({
-  label: 'Embedded Forms Script',
-  repositoryName: 'forms-cdn',
-  type: 'CDN_HOSTING',
-  isPublic: true,
-})
+const formsCdn = createProductRepository(
+  createGitHubProductRepository({
+    label: 'Embedded Forms Script',
+    repositoryName: 'forms-cdn',
+    type: 'CDN_HOSTING',
+    isPublic: true,
+  }),
+)
 
-const nugetSdk = createProductRepository({
-  label: 'OneBlink.SDK (Nuget package)',
-  repositoryName: 'sdk-dotnet',
-  type: 'NUGET',
-  isPublic: true,
-  relativeProjectFile: 'OneBlink.SDK/OneBlink.SDK.csproj',
-})
+const nugetSdk = createProductRepository(
+  createGitHubProductRepository({
+    label: 'OneBlink.SDK (Nuget package)',
+    repositoryName: 'sdk-dotnet',
+    type: 'NUGET',
+    isPublic: true,
+    relativeProjectFile: 'OneBlink.SDK/OneBlink.SDK.csproj',
+  }),
+)
 
 describe('getDependentCandidates', () => {
   it('returns repositories that depend on an outdated source package version', () => {

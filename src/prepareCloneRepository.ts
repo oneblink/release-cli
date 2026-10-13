@@ -6,8 +6,10 @@ import wrapWithLoading from './wrapWithLoading.js'
 
 export default async function prepareCloneRepository({
   repositoryName,
+  cloneUrl,
 }: {
   repositoryName: string
+  cloneUrl: string
 }) {
   const repositoryWorkingDirectory = await wrapWithLoading(
     {
@@ -26,7 +28,6 @@ export default async function prepareCloneRepository({
   return {
     repositoryWorkingDirectory,
     async cloneRepository() {
-      const cloneUrl = `git@github.com:oneblink/${repositoryName}.git`
       await executeCommand(
         'git',
         ['clone', cloneUrl, repositoryWorkingDirectory],

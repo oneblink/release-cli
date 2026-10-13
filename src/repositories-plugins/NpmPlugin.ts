@@ -8,6 +8,7 @@ import {
   hasFileChanges,
   runCommandAllowingRemainingVulnerabilities,
 } from './fix-vulnerabilities-helpers.js'
+import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import {
   FixVulnerabilitiesResult,
   RepositoryPlugin,
@@ -18,9 +19,17 @@ export default class NpmPlugin implements RepositoryPlugin {
   isDeploymentRequired = false
   supportsDependencyUpdates = true
   cwd: string
+  sourceCodeProvider: SourceCodeProvider
 
-  constructor({ cwd }: { cwd: string }) {
+  constructor({
+    cwd,
+    sourceCodeProvider,
+  }: {
+    cwd: string
+    sourceCodeProvider: SourceCodeProvider
+  }) {
     this.cwd = cwd
+    this.sourceCodeProvider = sourceCodeProvider
   }
 
   async getCurrentVersion(): Promise<string | undefined> {

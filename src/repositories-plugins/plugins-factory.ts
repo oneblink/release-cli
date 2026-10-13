@@ -1,10 +1,12 @@
 import fs from 'fs/promises'
 import path from 'path'
+import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import { RepositoryPlugin } from './RepositoryPlugin.js'
 import NpmPlugin from './NpmPlugin.js'
 import NugetPlugin from './NugetPlugin.js'
 import NodeJsPlugin from './NodeJsPlugin.js'
 import CdnHostingPlugin from './CdnHostingPlugin.js'
+import DrupalModulePlugin from './DrupalModulePlugin.js'
 
 export type RepositoryType =
   | {
@@ -14,6 +16,16 @@ export type RepositoryType =
       type: 'NUGET'
       relativeProjectFile: string
     }
+  | {
+      type: 'DRUPAL_MODULE'
+      relativeInfoFile: string
+    }
+
+type RepositoryPluginFactoryOptions = {
+  cwd: string
+  sourceCodeProvider: SourceCodeProvider
+  repositoryType?: RepositoryType
+}
 
 async function exists(filePath: string) {
   try {
@@ -27,30 +39,39 @@ async function exists(filePath: string) {
 export default async function getRepositoryPlugin({
   cwd,
   repositoryType,
-}: {
-  cwd: string
-  repositoryType?: RepositoryType
-}): Promise<RepositoryPlugin> {
+  sourceCodeProvider,
+}: RepositoryPluginFactoryOptions): Promise<RepositoryPlugin> {
   switch (repositoryType?.type) {
     case 'CDN_HOSTING': {
       return new CdnHostingPlugin({
         cwd,
+        sourceCodeProvider,
       })
     }
     case 'NODE_JS': {
       return new NodeJsPlugin({
         cwd,
+        sourceCodeProvider,
       })
     }
     case 'NPM': {
       return new NpmPlugin({
         cwd,
+        sourceCodeProvider,
       })
     }
     case 'NUGET': {
       return new NugetPlugin({
         cwd,
         relativeProjectFile: repositoryType.relativeProjectFile,
+        sourceCodeProvider,
+      })
+    }
+    case 'DRUPAL_MODULE': {
+      return new DrupalModulePlugin({
+        cwd,
+        relativeInfoFile: repositoryType.relativeInfoFile,
+        sourceCodeProvider,
       })
     }
   }
@@ -60,6 +81,7 @@ export default async function getRepositoryPlugin({
   if (await exists(path.join(cwd, 'package.json'))) {
     return new NpmPlugin({
       cwd,
+      sourceCodeProvider,
     })
   }
 
@@ -68,6 +90,7 @@ export default async function getRepositoryPlugin({
     return new NugetPlugin({
       cwd,
       relativeProjectFile: dotnetSdkProjectFile,
+      sourceCodeProvider,
     })
   }
 

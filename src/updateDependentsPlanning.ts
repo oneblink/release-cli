@@ -92,8 +92,7 @@ export function getDownstreamRepositoryNames({
         !!scannedRepository.dependencies[intermediate.packageName],
     )
     .map(
-      (scannedRepository) =>
-        scannedRepository.productRepository.repositoryName,
+      (scannedRepository) => scannedRepository.productRepository.repositoryName,
     )
 }
 

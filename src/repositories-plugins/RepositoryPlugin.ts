@@ -1,4 +1,5 @@
 import { SemVer } from 'semver'
+import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 
 export type FixVulnerabilitiesResult = {
   filesToStage: string[]
@@ -7,6 +8,7 @@ export type FixVulnerabilitiesResult = {
 }
 
 export interface RepositoryPlugin {
+  sourceCodeProvider: SourceCodeProvider
   isDeploymentRequired: boolean
   supportsDependencyUpdates: boolean
   displayType: string
