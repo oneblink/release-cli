@@ -6,7 +6,10 @@ const { execaMock, setTimeoutMock, wrapWithLoadingMock } = vi.hoisted(() => ({
   wrapWithLoadingMock: vi.fn(
     async (
       _options: { startText: string; failText: string },
-      fn: (spinner: { succeed: ReturnType<typeof vi.fn>; text: string }) => Promise<void>,
+      fn: (spinner: {
+        succeed: ReturnType<typeof vi.fn>
+        text: string
+      }) => Promise<void>,
     ) => {
       const spinner = {
         succeed: vi.fn(),

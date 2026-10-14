@@ -7,8 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Drupal OneBlink Form Embed** (`oneblink_form_embed` on git.drupal.org) to product repositories
+- `GitLabSourceCodeProvider` creates merge requests using Git push options (`merge_request.create`) per [GitLab docs](https://docs.gitlab.com/topics/git/commit/#push-options-for-merge-requests)
+
 ### Changed
 
+- `getPreRelease` recognizes Drupal-style prerelease versions (e.g. `1.0.0-beta1`) as well as npm-style (`1.0.0-beta.1`)
 - Rename `audit-fix` command to `fix-vulnerabilities`
 - `fix-vulnerabilities` also runs `dotnet package update --vulnerable` for NuGet repositories
 

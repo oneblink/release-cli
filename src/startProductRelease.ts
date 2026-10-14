@@ -17,7 +17,12 @@ export default async function startProductRelease({
 
   const deploymentRequiredUrls: string[] = []
   await enumerateProductRepositories(
-    async ({ productRepository, cloneUrl, repositoryWorkingDirectory }) => {
+    async ({
+      productRepository,
+      cloneUrl,
+      repositoryWorkingDirectory,
+      sourceCodeProvider,
+    }) => {
       const { repositoryName } = productRepository
 
       // Check if repository needs releasing
@@ -82,6 +87,7 @@ Last Commit: ${lastCommitMessage}`),
       const repositoryPlugin = await getRepositoryPlugin({
         cwd: repositoryWorkingDirectory,
         repositoryType: productRepository,
+        sourceCodeProvider,
       })
 
       const { nextVersion } = await promptForNextVersion({
@@ -97,9 +103,12 @@ Last Commit: ${lastCommitMessage}`),
       })
 
       if (repositoryPlugin.isDeploymentRequired) {
-        deploymentRequiredUrls.push(
-          `https://github.com/oneblink/${repositoryName}/actions`,
-        )
+        if (!sourceCodeProvider.deploymentUrl) {
+          throw new Error(
+            `"${repositoryName}" requires deployment but its ${sourceCodeProvider.displayName} source provider has no deployment URL.`,
+          )
+        }
+        deploymentRequiredUrls.push(sourceCodeProvider.deploymentUrl)
       }
     },
   )

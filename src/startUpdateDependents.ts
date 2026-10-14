@@ -1,5 +1,7 @@
 import { readPackageUp } from 'read-package-up'
 import {
+  getProductRepository,
+  getProductRepositorySourceCodeProvider,
   productRepositories,
   ProductRepository,
 } from './enumerateProductRepositories.js'
@@ -26,9 +28,7 @@ import {
   getRepositoriesNeedingDependencyUpdates,
   ScannedProductRepository,
 } from './updateDependentsPlanning.js'
-import createOrLinkPullRequest, {
-  createPullRequestOctokit,
-} from './createOrLinkPullRequest.js'
+import { createSourceCodeProviderFromWorkingDirectory } from './source-code-providers/createSourceCodeProvider.js'
 import resolveTicket from './resolveTicket.js'
 
 type RetainedClone = {
@@ -55,6 +55,7 @@ export default async function startUpdateDependents({
 
   const dependencyRepositoryPlugin = await getRepositoryPlugin({
     cwd,
+    sourceCodeProvider: await createSourceCodeProviderFromWorkingDirectory(cwd),
   })
   if (!dependencyRepositoryPlugin.supportsDependencyUpdates) {
     console.log(
@@ -133,7 +134,6 @@ export default async function startUpdateDependents({
     const releasedPackageSummaries: string[] = []
     const pullRequestUrls: string[] = []
     let createdAnyPullRequest = false
-    const octokit = createPullRequestOctokit()
 
     for (const intermediate of sortedIntermediates) {
       const downstreamRepositoryNames = getDownstreamRepositoryNames({
@@ -203,9 +203,12 @@ export default async function startUpdateDependents({
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
 
+      const intermediateSourceCodeProvider =
+        getProductRepositorySourceCodeProvider(intermediate.productRepository)
       const repositoryPlugin = await getRepositoryPlugin({
         cwd: repositoryWorkingDirectory,
         repositoryType: intermediate.productRepository,
+        sourceCodeProvider: intermediateSourceCodeProvider,
       })
       const nextVersion = await resolveNextVersion({
         repositoryPlugin,
@@ -243,12 +246,11 @@ export default async function startUpdateDependents({
     })
 
     for (const candidate of updateTargets) {
-      const { bumpedPackageNames: packagesToUpdate } = getDependencyInstallSpecs(
-        {
+      const { bumpedPackageNames: packagesToUpdate } =
+        getDependencyInstallSpecs({
           dependencies: candidate.dependencies,
           releasedPackageVersions,
-        },
-      )
+        })
 
       let isUpdating: 'yes' | 'no'
       if (shouldForceUpdateDependency) {
@@ -316,17 +318,15 @@ export default async function startUpdateDependents({
         bumpedPackageNames,
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
-      await executeCommand(
-        'git',
-        ['push', '-u', 'origin', ticket],
-        repositoryWorkingDirectory,
+      const candidateSourceCodeProvider =
+        getProductRepositorySourceCodeProvider(candidate.productRepository)
+      const pullRequest = await candidateSourceCodeProvider.pushBranchForReview(
+        {
+          cwd: repositoryWorkingDirectory,
+          branchName: ticket,
+          title: commitMessage,
+        },
       )
-      const pullRequest = await createOrLinkPullRequest({
-        octokit,
-        repositoryName: candidate.productRepository.repositoryName,
-        ticket,
-        title: commitMessage,
-      })
       pullRequestUrls.push(pullRequest.url)
       if (pullRequest.created) {
         createdAnyPullRequest = true
@@ -464,6 +464,8 @@ async function scanProductRepositories({
       removeRepositoryWorkingDirectory,
     } = await prepareCloneRepository({
       repositoryName: productRepository.repositoryName,
+      cloneUrl:
+        getProductRepositorySourceCodeProvider(productRepository).cloneUrl,
     })
 
     try {
@@ -504,6 +506,8 @@ async function readScannedProductRepository({
   const repositoryPlugin = await getRepositoryPlugin({
     cwd: repositoryWorkingDirectory,
     repositoryType: productRepository,
+    sourceCodeProvider:
+      getProductRepositorySourceCodeProvider(productRepository),
   })
   if (!repositoryPlugin.supportsDependencyUpdates) {
     console.log(
@@ -604,12 +608,21 @@ async function ensureRetainedWorkingDirectory({
     return existingClone.repositoryWorkingDirectory
   }
 
+  const productRepository = getProductRepository(repositoryName)
+  if (!productRepository) {
+    throw new Error(
+      `Unknown product repository "${repositoryName}" when ensuring retained clone.`,
+    )
+  }
+
   const {
     cloneRepository,
     repositoryWorkingDirectory,
     removeRepositoryWorkingDirectory,
   } = await prepareCloneRepository({
     repositoryName,
+    cloneUrl:
+      getProductRepositorySourceCodeProvider(productRepository).cloneUrl,
   })
   await cloneRepository()
   retainedClones.set(repositoryName, {

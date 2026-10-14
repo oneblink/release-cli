@@ -12,6 +12,7 @@ import promptForNextVersion from './promptForNextVersion.js'
 import getPreRelease from './getPreRelease.js'
 import startProductRelease from './startProductRelease.js'
 import promptForReleaseName from './promptForReleaseName.js'
+import { createSourceCodeProviderFromWorkingDirectory } from './source-code-providers/createSourceCodeProvider.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 import startUpdateDependents from './startUpdateDependents.js'
 import startFixVulnerabilities from './startFixVulnerabilities.js'
@@ -254,6 +255,8 @@ async function run(): Promise<void> {
       let input = cli.input[1]
       const repositoryPlugin = await getRepositoryPlugin({
         cwd,
+        sourceCodeProvider:
+          await createSourceCodeProviderFromWorkingDirectory(cwd),
       })
       if (cli.flags.increment) {
         const currentVersion = await repositoryPlugin.getCurrentVersion()

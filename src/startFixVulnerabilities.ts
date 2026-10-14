@@ -2,9 +2,6 @@ import boxen from 'boxen'
 import chalk from 'chalk'
 import enumerateProductRepositories from './enumerateProductRepositories.js'
 import executeCommand from './executeCommand.js'
-import createOrLinkPullRequest, {
-  createPullRequestOctokit,
-} from './createOrLinkPullRequest.js'
 import resolveTicket from './resolveTicket.js'
 import getRepositoryPlugin from './repositories-plugins/plugins-factory.js'
 
@@ -16,7 +13,6 @@ export default async function startFixVulnerabilities({
   force?: boolean
 }) {
   const ticket = await resolveTicket({ ticketFlag, force })
-  const octokit = createPullRequestOctokit()
 
   console.log(
     `Beginning vulnerability fixes across product repositories using branch "${ticket}"`,
@@ -29,12 +25,17 @@ export default async function startFixVulnerabilities({
 
   try {
     await enumerateProductRepositories(
-      async ({ productRepository, repositoryWorkingDirectory }) => {
+      async ({
+        productRepository,
+        repositoryWorkingDirectory,
+        sourceCodeProvider,
+      }) => {
         const { repositoryName } = productRepository
 
         const repositoryPlugin = await getRepositoryPlugin({
           cwd: repositoryWorkingDirectory,
           repositoryType: productRepository,
+          sourceCodeProvider,
         })
 
         if (!repositoryPlugin.fixVulnerabilities) {
@@ -70,16 +71,9 @@ export default async function startFixVulnerabilities({
           ['commit', '--message', commitMessage],
           repositoryWorkingDirectory,
         )
-        await executeCommand(
-          'git',
-          ['push', '-u', 'origin', ticket],
-          repositoryWorkingDirectory,
-        )
-
-        const pullRequest = await createOrLinkPullRequest({
-          octokit,
-          repositoryName,
-          ticket,
+        const pullRequest = await sourceCodeProvider.pushBranchForReview({
+          cwd: repositoryWorkingDirectory,
+          branchName: ticket,
           title: commitMessage,
           body: pullRequestBody,
         })

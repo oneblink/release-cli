@@ -8,7 +8,9 @@ import {
   hasFileChanges,
   runCommandAllowingRemainingVulnerabilities,
 } from './fix-vulnerabilities-helpers.js'
+import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import {
+  DEFAULT_GIT_TAG_PREFIX,
   FixVulnerabilitiesResult,
   RepositoryPlugin,
 } from './RepositoryPlugin.js'
@@ -17,10 +19,19 @@ export default class NpmPlugin implements RepositoryPlugin {
   displayType = 'NPM'
   isDeploymentRequired = false
   supportsDependencyUpdates = true
+  gitTagPrefix = DEFAULT_GIT_TAG_PREFIX
   cwd: string
+  sourceCodeProvider: SourceCodeProvider
 
-  constructor({ cwd }: { cwd: string }) {
+  constructor({
+    cwd,
+    sourceCodeProvider,
+  }: {
+    cwd: string
+    sourceCodeProvider: SourceCodeProvider
+  }) {
     this.cwd = cwd
+    this.sourceCodeProvider = sourceCodeProvider
   }
 
   async getCurrentVersion(): Promise<string | undefined> {
