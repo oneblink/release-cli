@@ -8,6 +8,7 @@ import {
 } from './fix-vulnerabilities-helpers.js'
 import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import {
+  DEFAULT_GIT_TAG_PREFIX,
   FixVulnerabilitiesResult,
   RepositoryPlugin,
 } from './RepositoryPlugin.js'
@@ -16,6 +17,7 @@ export default class NugetPlugin implements RepositoryPlugin {
   isDeploymentRequired = false
   supportsDependencyUpdates = false
   displayType = 'Nuget'
+  gitTagPrefix = DEFAULT_GIT_TAG_PREFIX
 
   cwd: string
   relativeProjectFile: string

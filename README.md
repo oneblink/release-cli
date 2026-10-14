@@ -20,7 +20,7 @@ The project that is being released must meet following requirements
 
 - Must have a `CHANGELOG.md` file in the root directory
 - `CHANGELOG.md` must follow the standard outlined in [changelog-parser](https://www.npmjs.com/package/changelog-parser)
-- Git tags that are created will be [annotated](https://git-scm.com/book/en/v2/Git-Basics-Tagging#_annotated_tags) and prefixed with a `v` e.g. `v1.11.2`
+- Git tags that are created will be [annotated](https://git-scm.com/book/en/v2/Git-Basics-Tagging#_annotated_tags). Most repositories use a `v` prefix (e.g. `v1.11.2`). Drupal modules use bare semver tags (e.g. `1.11.2`) for [drupal.org releases](https://www.drupal.org/docs/develop/git/git-for-drupal-project-maintainers/creating-a-project-release).
 
 ## Usage
 

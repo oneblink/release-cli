@@ -8,6 +8,7 @@ export default class DrupalModulePlugin implements RepositoryPlugin {
   displayType = 'Drupal module'
   isDeploymentRequired = false
   supportsDependencyUpdates = false
+  gitTagPrefix = ''
 
   cwd: string
   relativeInfoFile: string

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `getPreRelease` recognizes Drupal-style prerelease versions (e.g. `1.0.0-beta1`) as well as npm-style (`1.0.0-beta.1`)
 - Rename `audit-fix` command to `fix-vulnerabilities`
 - `fix-vulnerabilities` also runs `dotnet package update --vulnerable` for NuGet repositories
 

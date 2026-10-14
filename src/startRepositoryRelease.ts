@@ -9,12 +9,14 @@ import wrapWithLoading from './wrapWithLoading.js'
 import executeCommand from './executeCommand.js'
 import parseChangelogWithLoading from './parseChangelogWithLoading.js'
 import getPreRelease from './getPreRelease.js'
-import { RepositoryPlugin } from './repositories-plugins/RepositoryPlugin.js'
+import {
+  formatRepositoryGitTag,
+  RepositoryPlugin,
+} from './repositories-plugins/RepositoryPlugin.js'
 
 const writeFileAsync = util.promisify(fs.writeFile)
 
 const UNRELEASED_VERSION_INDEX = 0
-const GIT_TAG_PREFIX = 'v'
 
 async function updateChangelog({
   nextSemverVersion,
@@ -70,7 +72,17 @@ async function updateChangelog({
         return ''
       }
 
-      const lastGitTag = `${GIT_TAG_PREFIX}${lastVersion.version}`
+      const lastReleasedVersion = lastVersion.version
+      if (!lastReleasedVersion) {
+        throw new Error(
+          `Could not determine version for last release in CHANGELOG.md (${lastVersion.title})`,
+        )
+      }
+
+      const lastGitTag = formatRepositoryGitTag(
+        repositoryPlugin.gitTagPrefix,
+        lastReleasedVersion,
+      )
       const dependenciesChangelog =
         await repositoryPlugin.generateDependenciesChangelog({
           previousVersion: lastGitTag,
@@ -211,7 +223,10 @@ export default async function startRepositoryRelease({
     [
       'tag',
       '-a',
-      `${GIT_TAG_PREFIX}${nextSemverVersion.version}`,
+      formatRepositoryGitTag(
+        repositoryPlugin.gitTagPrefix,
+        nextSemverVersion.version,
+      ),
       '-m',
       message,
     ],

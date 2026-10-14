@@ -10,6 +10,7 @@ import {
 } from './fix-vulnerabilities-helpers.js'
 import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import {
+  DEFAULT_GIT_TAG_PREFIX,
   FixVulnerabilitiesResult,
   RepositoryPlugin,
 } from './RepositoryPlugin.js'
@@ -18,6 +19,7 @@ export default class NpmPlugin implements RepositoryPlugin {
   displayType = 'NPM'
   isDeploymentRequired = false
   supportsDependencyUpdates = true
+  gitTagPrefix = DEFAULT_GIT_TAG_PREFIX
   cwd: string
   sourceCodeProvider: SourceCodeProvider
 
