@@ -6,7 +6,7 @@ import { RepositoryPlugin } from './RepositoryPlugin.js'
 
 export default class DrupalModulePlugin implements RepositoryPlugin {
   displayType = 'Drupal module'
-  isDeploymentRequired = false
+  isDeploymentRequired = true
   supportsDependencyUpdates = false
   gitTagPrefix = ''
 
