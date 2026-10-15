@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.2.0] - 2026-10-15
+
 ### Added
 
 - **Drupal OneBlink Form Embed** (`oneblink_form_embed` on git.drupal.org) to product repositories
