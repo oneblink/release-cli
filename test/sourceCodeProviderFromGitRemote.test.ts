@@ -46,6 +46,9 @@ describe('createSourceCodeProviderFromWorkingDirectory', () => {
     expect(provider.cloneUrl).toBe(
       'git@git.drupal.org:project/oneblink_form_embed.git',
     )
+    expect(provider.deploymentUrl).toBe(
+      'https://www.drupal.org/project/oneblink_form_embed',
+    )
   })
 
   it('parses GitLab SSH remotes', async () => {

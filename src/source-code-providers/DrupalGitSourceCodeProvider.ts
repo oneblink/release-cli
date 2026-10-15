@@ -17,6 +17,7 @@ export default class DrupalGitSourceCodeProvider extends GitLabSourceCodeProvide
   }
 
   readonly projectName: string
+  readonly deploymentUrl: string
 
   constructor({ projectName }: { projectName: string }) {
     super({
@@ -25,5 +26,6 @@ export default class DrupalGitSourceCodeProvider extends GitLabSourceCodeProvide
       displayName: 'Drupal Git',
     })
     this.projectName = projectName
+    this.deploymentUrl = `https://www.drupal.org/project/${projectName}`
   }
 }
