@@ -167,7 +167,7 @@ export const productRepositories: readonly ProductRepository[] = [
     repositoryName: 'oneblink_form_embed',
     isPublic: true,
     type: 'DRUPAL_MODULE',
-    relativeInfoFile: 'oneblink_embed.info.yml',
+    relativeInfoFile: 'oneblink_form_embed.info.yml',
     sourceCodeProvider: {
       type: 'DRUPAL_GIT',
       projectName: 'oneblink_form_embed',
