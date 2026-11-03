@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [5.2.3] - 2026-11-03
+
 ### Fixed
 
 - GitHub pull request creation names the head as `owner:branch` in the repository the branch was pushed to, so organisation-scoped tokens no longer fail with "not all refs are readable"
