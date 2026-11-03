@@ -20,6 +20,7 @@ import getPreRelease from './getPreRelease.js'
 import semver from 'semver'
 import {
   buildDependencyBumpCommitMessage,
+  collectTrackedDependencies,
   DependentCandidate,
   getDependencyInstallSpecs,
   getDependentCandidates,
@@ -42,12 +43,14 @@ export default async function startUpdateDependents({
   force = false,
   forceUpdateDependency = false,
   forcePublishIntermediateDependency = false,
+  includeDevDependencies = false,
   ticket: ticketFlag,
 }: {
   cwd: string
   force?: boolean
   forceUpdateDependency?: boolean
   forcePublishIntermediateDependency?: boolean
+  includeDevDependencies?: boolean
   ticket?: string
 }) {
   const shouldForceUpdateDependency = force || forceUpdateDependency
@@ -90,6 +93,7 @@ export default async function startUpdateDependents({
   try {
     const { scannedRepositories } = await scanProductRepositories({
       retainedClones,
+      includeDevDependencies,
     })
 
     const candidates = getDependentCandidates({
@@ -186,6 +190,7 @@ export default async function startUpdateDependents({
       const bumpedPackageNames = await installDependencyUpdates({
         cwd: repositoryWorkingDirectory,
         dependencies: intermediate.dependencies,
+        devDependencyNames: intermediate.devDependencyNames,
         releasedPackageVersions,
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
@@ -250,6 +255,7 @@ export default async function startUpdateDependents({
       const { bumpedPackageNames: packagesToUpdate } =
         getDependencyInstallSpecs({
           dependencies: candidate.dependencies,
+          devDependencyNames: candidate.devDependencyNames,
           releasedPackageVersions,
         })
 
@@ -297,6 +303,7 @@ export default async function startUpdateDependents({
       const bumpedPackageNames = await installDependencyUpdates({
         cwd: repositoryWorkingDirectory,
         dependencies: candidate.dependencies,
+        devDependencyNames: candidate.devDependencyNames,
         releasedPackageVersions,
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
@@ -451,8 +458,10 @@ async function resolveNextVersion({
 
 async function scanProductRepositories({
   retainedClones,
+  includeDevDependencies,
 }: {
   retainedClones: Map<string, RetainedClone>
+  includeDevDependencies: boolean
 }): Promise<{
   scannedRepositories: ScannedProductRepository[]
 }> {
@@ -475,6 +484,7 @@ async function scanProductRepositories({
       const scannedRepository = await readScannedProductRepository({
         productRepository,
         repositoryWorkingDirectory,
+        includeDevDependencies,
       })
       scannedRepositories.push(scannedRepository)
 
@@ -500,9 +510,11 @@ async function scanProductRepositories({
 async function readScannedProductRepository({
   productRepository,
   repositoryWorkingDirectory,
+  includeDevDependencies,
 }: {
   productRepository: ProductRepository
   repositoryWorkingDirectory: string
+  includeDevDependencies: boolean
 }): Promise<ScannedProductRepository> {
   const repositoryPlugin = await getRepositoryPlugin({
     cwd: repositoryWorkingDirectory,
@@ -519,6 +531,7 @@ async function readScannedProductRepository({
       packageName: undefined,
       packageVersion: undefined,
       dependencies: {},
+      devDependencyNames: [],
       supportsDependencyUpdates: false,
     }
   }
@@ -526,11 +539,17 @@ async function readScannedProductRepository({
   const result = await readPackageUp({
     cwd: repositoryWorkingDirectory,
   })
+  const trackedDependencies = collectTrackedDependencies({
+    dependencies: result?.packageJson.dependencies,
+    devDependencies: result?.packageJson.devDependencies,
+    includeDevDependencies,
+  })
   return {
     productRepository,
     packageName: result?.packageJson.name,
     packageVersion: result?.packageJson.version,
-    dependencies: result?.packageJson.dependencies || {},
+    dependencies: trackedDependencies.dependencies,
+    devDependencyNames: trackedDependencies.devDependencyNames,
     supportsDependencyUpdates: true,
   }
 }
@@ -694,23 +713,35 @@ function logSkippedRepository({
 async function installDependencyUpdates({
   cwd,
   dependencies,
+  devDependencyNames,
   releasedPackageVersions,
   isUpdatingTypes,
 }: {
   cwd: string
   dependencies: Record<string, string | undefined>
+  devDependencyNames: string[]
   releasedPackageVersions: Map<string, string>
   isUpdatingTypes: boolean
 }): Promise<string[]> {
-  const { bumpedPackageNames, installSpecs } = getDependencyInstallSpecs({
-    dependencies,
-    releasedPackageVersions,
-  })
+  const { bumpedPackageNames, installSpecs, devInstallSpecs } =
+    getDependencyInstallSpecs({
+      dependencies,
+      devDependencyNames,
+      releasedPackageVersions,
+    })
 
   if (isUpdatingTypes) {
     await executeCommand(
       'npm',
       ['install', '--package-lock-only', '-D', '@oneblink/types'],
+      cwd,
+    )
+  }
+
+  if (devInstallSpecs.length) {
+    await executeCommand(
+      'npm',
+      ['install', '--package-lock-only', '--save-dev', ...devInstallSpecs],
       cwd,
     )
   }

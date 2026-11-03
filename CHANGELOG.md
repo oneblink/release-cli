@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--include-dev-dependencies` flag for `update-dependents` and `repository --update-dependents` to also update packages listed in `devDependencies`
+
 ## [5.2.3] - 2026-11-03
 
 ### Fixed

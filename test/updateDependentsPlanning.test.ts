@@ -5,6 +5,7 @@ import {
 } from '../src/enumerateProductRepositories.js'
 import {
   buildDependencyBumpCommitMessage,
+  collectTrackedDependencies,
   getDependencyInstallSpecs,
   getDependentCandidates,
   getDownstreamRepositoryNames,
@@ -348,6 +349,27 @@ describe('getDependencyInstallSpecs', () => {
         '@oneblink/sdk-core@10.1.0',
         '@oneblink/apps-react@11.2.0',
       ],
+      devInstallSpecs: [],
+    })
+  })
+
+  it('returns dev install specs for packages tracked as dev dependencies', () => {
+    expect(
+      getDependencyInstallSpecs({
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+          '@oneblink/types': '^8.0.0',
+        },
+        devDependencyNames: ['@oneblink/types'],
+        releasedPackageVersions: new Map([
+          ['@oneblink/sdk-core', '10.1.0'],
+          ['@oneblink/types', '8.2.0'],
+        ]),
+      }),
+    ).toEqual({
+      bumpedPackageNames: ['@oneblink/sdk-core', '@oneblink/types'],
+      installSpecs: ['@oneblink/sdk-core@10.1.0'],
+      devInstallSpecs: ['@oneblink/types@8.2.0'],
     })
   })
 
@@ -362,6 +384,49 @@ describe('getDependencyInstallSpecs', () => {
     ).toEqual({
       bumpedPackageNames: [],
       installSpecs: [],
+      devInstallSpecs: [],
+    })
+  })
+})
+
+describe('collectTrackedDependencies', () => {
+  it('ignores dev dependencies unless they are included', () => {
+    expect(
+      collectTrackedDependencies({
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+        devDependencies: {
+          '@oneblink/types': '^8.0.0',
+        },
+        includeDevDependencies: false,
+      }),
+    ).toEqual({
+      dependencies: {
+        '@oneblink/sdk-core': '^9.0.0',
+      },
+      devDependencyNames: [],
+    })
+  })
+
+  it('tracks dev dependencies and keeps production dependencies ahead of them', () => {
+    expect(
+      collectTrackedDependencies({
+        dependencies: {
+          '@oneblink/sdk-core': '^9.0.0',
+        },
+        devDependencies: {
+          '@oneblink/sdk-core': '^8.0.0',
+          '@oneblink/types': '^8.0.0',
+        },
+        includeDevDependencies: true,
+      }),
+    ).toEqual({
+      dependencies: {
+        '@oneblink/sdk-core': '^9.0.0',
+        '@oneblink/types': '^8.0.0',
+      },
+      devDependencyNames: ['@oneblink/types'],
     })
   })
 })
@@ -399,12 +464,14 @@ function createScannedRepository({
   packageName,
   packageVersion,
   dependencies = {},
+  devDependencyNames = [],
   supportsDependencyUpdates = true,
 }: {
   productRepository: ProductRepository
   packageName?: string
   packageVersion?: string
   dependencies?: Record<string, string | undefined>
+  devDependencyNames?: string[]
   supportsDependencyUpdates?: boolean
 }): ScannedProductRepository {
   return {
@@ -412,6 +479,7 @@ function createScannedRepository({
     packageName,
     packageVersion,
     dependencies,
+    devDependencyNames,
     supportsDependencyUpdates,
   }
 }
