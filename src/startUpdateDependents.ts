@@ -25,6 +25,7 @@ import {
   getDependentCandidates,
   getDownstreamRepositoryNames,
   getIntermediateNpmDependents,
+  getOwnDependencyVersion,
   getRepositoriesNeedingDependencyUpdates,
   ScannedProductRepository,
 } from './updateDependentsPlanning.js'
@@ -552,7 +553,8 @@ function getRepositoryNamesToRetain({
 
   for (const scannedRepository of scannedRepositories) {
     const dependsOnIntermediate = [...intermediatePackageNames].some(
-      (packageName) => scannedRepository.dependencies[packageName],
+      (packageName) =>
+        getOwnDependencyVersion(scannedRepository.dependencies, packageName),
     )
     if (dependsOnIntermediate) {
       repositoryNamesToRetain.add(
@@ -666,7 +668,10 @@ function logSkippedRepository({
     return
   }
 
-  const currentDependencyVersion = scannedRepository.dependencies[dependency]
+  const currentDependencyVersion = getOwnDependencyVersion(
+    scannedRepository.dependencies,
+    dependency,
+  )
   if (!currentDependencyVersion) {
     console.log(
       `Skipping "${scannedRepository.productRepository.repositoryName}" as it does not contain "${dependency}" as a dependency.`,

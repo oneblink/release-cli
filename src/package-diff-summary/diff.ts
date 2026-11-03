@@ -7,7 +7,10 @@ import * as npm from './npm.js'
 
 // http://semver.org/#spec-item-9
 // 1.0.0, 1.0.0-foo1, 1.0.0-foo1.blah2, 1.0.0-foo1.blah2.abc3, ...
-const VERSION_REGEXP = /\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?/
+// Core and pre-release are matched separately so neither pattern nests
+// quantifiers (a single semver expression is treated as ReDoS-prone).
+const VERSION_CORE_REGEXP = /\d+\.\d+\.\d+/
+const PRERELEASE_IDENTIFIER_REGEXP = /^[0-9A-Za-z-]+/
 
 function lineForDelete(nameMd: string): string {
   return `-   no longer depend upon ${nameMd}`
@@ -35,8 +38,33 @@ function lineForUpdate(
 
 // strips any sloppy / range characters, e.g. ^ or >=
 function strictVersion(version: string): string {
-  const [versionNumbers] = version.match(VERSION_REGEXP) || []
-  return versionNumbers || ''
+  const match = version.match(VERSION_CORE_REGEXP)
+  if (match?.index == null) {
+    return ''
+  }
+
+  const core = match[0]
+  const suffix = version.slice(match.index + core.length)
+  if (!suffix.startsWith('-')) {
+    return core
+  }
+
+  const identifiers: string[] = []
+  for (const identifier of suffix.slice(1).split('.')) {
+    const validIdentifier = identifier.match(PRERELEASE_IDENTIFIER_REGEXP)?.[0]
+    if (!validIdentifier) {
+      break
+    }
+    identifiers.push(validIdentifier)
+    if (validIdentifier.length !== identifier.length) {
+      break
+    }
+  }
+
+  if (!identifiers.length) {
+    return core
+  }
+  return `${core}-${identifiers.join('.')}`
 }
 
 function versionToMarkdown(
@@ -58,7 +86,9 @@ function deltaToMarkdown(
   oldPkg: { dependencies?: Record<string, string> },
   cwd: string,
 ): Promise<string> {
-  const oldDependencies = oldPkg.dependencies || {}
+  const oldDependencies = new Map<string, string>(
+    Object.entries(oldPkg.dependencies || {}),
+  )
 
   const depDeltas = diff.dependencies || []
 
@@ -67,10 +97,12 @@ function deltaToMarkdown(
     const { name, operation, version: versionRange } = depDelta
     const version = strictVersion(versionRange)
 
-    let oldVersionRange: string | undefined, oldVersion: string | undefined
+    let oldVersion: string | undefined
     if (operation === 'edit') {
-      oldVersionRange = oldDependencies[name]
-      oldVersion = strictVersion(oldVersionRange)
+      const oldVersionRange = oldDependencies.get(name)
+      if (oldVersionRange) {
+        oldVersion = strictVersion(oldVersionRange)
+      }
     }
 
     return Promise.all([

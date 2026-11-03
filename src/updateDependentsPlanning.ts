@@ -16,6 +16,13 @@ export type DependentCandidate = {
   currentSourceDependencyVersion: string
 }
 
+export function getOwnDependencyVersion(
+  dependencies: Record<string, string | undefined>,
+  packageName: string,
+): string | undefined {
+  return new Map(Object.entries(dependencies)).get(packageName)
+}
+
 export function getDependentCandidates({
   scannedRepositories,
   dependency,
@@ -33,7 +40,10 @@ export function getDependentCandidates({
       continue
     }
 
-    const currentDependencyVersion = scannedRepository.dependencies[dependency]
+    const currentDependencyVersion = getOwnDependencyVersion(
+      scannedRepository.dependencies,
+      dependency,
+    )
     if (!currentDependencyVersion) {
       continue
     }
@@ -72,7 +82,10 @@ export function getIntermediateNpmDependents({
       (scannedRepository) =>
         scannedRepository.productRepository.repositoryName !==
           candidate.productRepository.repositoryName &&
-        !!scannedRepository.dependencies[candidate.packageName],
+        !!getOwnDependencyVersion(
+          scannedRepository.dependencies,
+          candidate.packageName,
+        ),
     )
   })
 }
@@ -89,7 +102,10 @@ export function getDownstreamRepositoryNames({
       (scannedRepository) =>
         scannedRepository.productRepository.repositoryName !==
           intermediate.productRepository.repositoryName &&
-        !!scannedRepository.dependencies[intermediate.packageName],
+        !!getOwnDependencyVersion(
+          scannedRepository.dependencies,
+          intermediate.packageName,
+        ),
     )
     .map(
       (scannedRepository) => scannedRepository.productRepository.repositoryName,
@@ -140,7 +156,7 @@ export function getDependencyInstallSpecs({
   const installSpecs: string[] = []
 
   for (const [packageName, version] of releasedPackageVersions) {
-    const currentVersion = dependencies[packageName]
+    const currentVersion = getOwnDependencyVersion(dependencies, packageName)
     if (currentVersion && currentVersion !== `^${version}`) {
       installSpecs.push(`${packageName}@${version}`)
       bumpedPackageNames.push(packageName)

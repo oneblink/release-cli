@@ -13,6 +13,7 @@ export default async function parseChangelogWithLoading(cwd: string) {
     async (spinner) => {
       // Pass file contents as text so changelog-parser splits on any newline
       // style. Passing filePath uses os.EOL and breaks on Windows for LF files.
+      // eslint-disable-next-line security/detect-non-literal-fs-filename
       const changelogText = await readFile(changelogPath, 'utf-8')
       const parsedChangelog = await parseChangelog({
         text: changelogText,

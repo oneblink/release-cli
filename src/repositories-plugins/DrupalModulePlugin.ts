@@ -1,6 +1,9 @@
-import { readFile, writeFile } from 'fs/promises'
-import path from 'path'
 import { SemVer } from 'semver'
+import {
+  readRepositoryFile,
+  RepositoryPathError,
+  writeRepositoryFile,
+} from '../repositoryFiles.js'
 import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import { RepositoryPlugin } from './RepositoryPlugin.js'
 
@@ -29,26 +32,32 @@ export default class DrupalModulePlugin implements RepositoryPlugin {
   }
 
   async getCurrentVersion(): Promise<string | undefined> {
-    const composerPath = path.join(this.cwd, 'composer.json')
     try {
-      const composer = JSON.parse(await readFile(composerPath, 'utf-8')) as {
+      const composer = JSON.parse(
+        await readRepositoryFile(this.cwd, 'composer.json'),
+      ) as {
         version?: string
       }
       if (composer.version) {
         return composer.version
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof RepositoryPathError) {
+        throw error
+      }
       // composer.json is optional for version discovery
     }
 
-    const infoPath = path.join(this.cwd, this.relativeInfoFile)
     try {
-      const info = await readFile(infoPath, 'utf-8')
+      const info = await readRepositoryFile(this.cwd, this.relativeInfoFile)
       const match = info.match(/^version:\s*['"]?([^'"\n]+)['"]?\s*$/m)
       if (match?.[1]) {
         return match[1]
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof RepositoryPathError) {
+        throw error
+      }
       // .info.yml missing or unreadable (composer.json was already checked above).
     }
 
@@ -58,29 +67,30 @@ export default class DrupalModulePlugin implements RepositoryPlugin {
   }
 
   async incrementVersion(nextSemverVersion: SemVer): Promise<void> {
-    const composerPath = path.join(this.cwd, 'composer.json')
     try {
       const composer = JSON.parse(
-        await readFile(composerPath, 'utf-8'),
+        await readRepositoryFile(this.cwd, 'composer.json'),
       ) as Record<string, unknown>
       composer.version = nextSemverVersion.version
-      await writeFile(
-        composerPath,
+      await writeRepositoryFile(
+        this.cwd,
+        'composer.json',
         `${JSON.stringify(composer, null, 4)}\n`,
-        'utf-8',
       )
-    } catch {
+    } catch (error) {
+      if (error instanceof RepositoryPathError) {
+        throw error
+      }
       // composer.json is optional for version bumps
     }
 
-    const infoPath = path.join(this.cwd, this.relativeInfoFile)
-    let info = await readFile(infoPath, 'utf-8')
+    let info = await readRepositoryFile(this.cwd, this.relativeInfoFile)
     const versionLine = `version: '${nextSemverVersion.version}'`
     if (/^version:/m.test(info)) {
       info = info.replace(/^version:.*$/m, versionLine)
     } else {
       info = info.replace(/^(type: module\n)/m, `$1${versionLine}\n`)
     }
-    await writeFile(infoPath, info, 'utf-8')
+    await writeRepositoryFile(this.cwd, this.relativeInfoFile, info)
   }
 }

@@ -1,15 +1,17 @@
 import path from 'path'
-import { mkdtemp, writeFile, rm } from 'fs/promises'
+import { mkdtemp, rm } from 'fs/promises'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import parseChangelogWithLoading from '../src/parseChangelogWithLoading.js'
+import { writeRepositoryFile } from '../src/repositoryFiles.js'
 
 describe('parseChangelogWithLoading', () => {
   it('parses changelogs that use LF line endings', async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), 'changelog-lf-'))
     try {
-      await writeFile(
-        path.join(cwd, 'CHANGELOG.md'),
+      await writeRepositoryFile(
+        cwd,
+        'CHANGELOG.md',
         [
           '# Changelog',
           '',
@@ -26,7 +28,6 @@ describe('parseChangelogWithLoading', () => {
           '- initial release',
           '',
         ].join('\n'),
-        'utf-8',
       )
 
       const { parsedChangelog } = await parseChangelogWithLoading(cwd)
@@ -42,8 +43,9 @@ describe('parseChangelogWithLoading', () => {
   it('parses changelogs that use CRLF line endings', async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), 'changelog-crlf-'))
     try {
-      await writeFile(
-        path.join(cwd, 'CHANGELOG.md'),
+      await writeRepositoryFile(
+        cwd,
+        'CHANGELOG.md',
         [
           '# Changelog',
           '',
@@ -60,7 +62,6 @@ describe('parseChangelogWithLoading', () => {
           '- initial release',
           '',
         ].join('\r\n'),
-        'utf-8',
       )
 
       const { parsedChangelog } = await parseChangelogWithLoading(cwd)

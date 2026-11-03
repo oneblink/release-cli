@@ -1,6 +1,5 @@
-import fs from 'fs/promises'
-import path from 'path'
 import { readPackageUp } from 'read-package-up'
+import { repositoryFileExists } from '../repositoryFiles.js'
 import { main as packageDiffSummary } from '../package-diff-summary/index.js'
 import { SemVer } from 'semver'
 import executeCommand from '../executeCommand.js'
@@ -87,10 +86,7 @@ export default class NpmPlugin implements RepositoryPlugin {
     ticket: string
     repositoryName: string
   }): Promise<FixVulnerabilitiesResult | undefined> {
-    const packageLockPath = path.join(this.cwd, 'package-lock.json')
-    try {
-      await fs.stat(packageLockPath)
-    } catch {
+    if (!(await repositoryFileExists(this.cwd, 'package-lock.json'))) {
       console.log(
         `Skipping "${repositoryName}" as it does not contain a package-lock.json file.`,
       )

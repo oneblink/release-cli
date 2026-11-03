@@ -28,7 +28,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "@types/changelog-parser": "^2.8.4",
     "@types/github-url-from-git": "^1.5.3",
     "@types/node": "^24.10.8",
@@ -40,6 +39,7 @@
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-security": "^4.2.1",
     "fixpack": "^4.0.0",
     "prettier-plugin-jsdoc": "^1.8.0",
     "typescript": "^5.9.3",
