@@ -1,6 +1,5 @@
-import { readFile, writeFile } from 'fs/promises'
-import path from 'path'
 import { SemVer } from 'semver'
+import { readRepositoryFile, writeRepositoryFile } from '../repositoryFiles.js'
 import getPreRelease from '../getPreRelease.js'
 import {
   getChangedFilesMatching,
@@ -38,15 +37,16 @@ export default class NugetPlugin implements RepositoryPlugin {
   }
 
   async getCurrentVersion(): Promise<string | undefined> {
-    const projectFile = path.join(this.cwd, this.relativeProjectFile)
-    const file = await readFile(projectFile, 'utf-8')
+    const file = await readRepositoryFile(this.cwd, this.relativeProjectFile)
     const matches = file.match(/<PackageVersion>(.*)<\/PackageVersion>/)
     return matches?.[1]
   }
 
   async incrementVersion(nextSemverVersion: SemVer): Promise<void> {
-    const projectFile = path.join(this.cwd, this.relativeProjectFile)
-    const fileContents = await readFile(projectFile, 'utf-8')
+    const fileContents = await readRepositoryFile(
+      this.cwd,
+      this.relativeProjectFile,
+    )
     const preRelease = getPreRelease(nextSemverVersion.version)
     const newFileContents = fileContents
       .replace(
@@ -61,7 +61,11 @@ export default class NugetPlugin implements RepositoryPlugin {
           preRelease?.version ?? 0
         }</AssemblyVersion>`,
       )
-    await writeFile(projectFile, newFileContents, 'utf-8')
+    await writeRepositoryFile(
+      this.cwd,
+      this.relativeProjectFile,
+      newFileContents,
+    )
   }
 
   async fixVulnerabilities({

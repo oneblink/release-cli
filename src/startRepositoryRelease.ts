@@ -46,8 +46,9 @@ async function updateChangelog({
         return ''
       }
 
-      const unreleasedVersion =
-        parsedChangelog.versions[UNRELEASED_VERSION_INDEX]
+      const unreleasedVersion = parsedChangelog.versions.at(
+        UNRELEASED_VERSION_INDEX,
+      )
       if (
         !unreleasedVersion ||
         !unreleasedVersion.title.toLowerCase().includes('unreleased')

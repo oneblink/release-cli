@@ -1,5 +1,5 @@
-import fs from 'fs/promises'
 import path from 'path'
+import { repositoryFileExists } from '../repositoryFiles.js'
 import { SourceCodeProvider } from '../source-code-providers/SourceCodeProvider.js'
 import { RepositoryPlugin } from './RepositoryPlugin.js'
 import NpmPlugin from './NpmPlugin.js'
@@ -26,15 +26,6 @@ type RepositoryPluginFactoryOptions = {
   cwd: string
   sourceCodeProvider: SourceCodeProvider
   repositoryType?: RepositoryType
-}
-
-async function exists(filePath: string) {
-  try {
-    await fs.stat(filePath)
-    return true
-  } catch {
-    return false
-  }
 }
 
 export default async function getRepositoryPlugin({
@@ -79,7 +70,7 @@ export default async function getRepositoryPlugin({
 
   // If we can't work it out based on type, we will check for certain files.
 
-  if (await exists(path.join(cwd, 'package.json'))) {
+  if (await repositoryFileExists(cwd, 'package.json')) {
     return new NpmPlugin({
       cwd,
       sourceCodeProvider,
@@ -87,7 +78,7 @@ export default async function getRepositoryPlugin({
   }
 
   const dotnetSdkProjectFile = path.join('OneBlink.SDK', 'OneBlink.SDK.csproj')
-  if (await exists(path.join(cwd, dotnetSdkProjectFile))) {
+  if (await repositoryFileExists(cwd, dotnetSdkProjectFile)) {
     return new NugetPlugin({
       cwd,
       relativeProjectFile: dotnetSdkProjectFile,
