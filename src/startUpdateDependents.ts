@@ -20,6 +20,7 @@ import getPreRelease from './getPreRelease.js'
 import semver from 'semver'
 import {
   buildDependencyBumpCommitMessage,
+  collectTrackedDependencies,
   DependentCandidate,
   getDependencyInstallSpecs,
   getDependentCandidates,
@@ -186,6 +187,7 @@ export default async function startUpdateDependents({
       const bumpedPackageNames = await installDependencyUpdates({
         cwd: repositoryWorkingDirectory,
         dependencies: intermediate.dependencies,
+        devDependencyNames: intermediate.devDependencyNames,
         releasedPackageVersions,
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
@@ -250,6 +252,7 @@ export default async function startUpdateDependents({
       const { bumpedPackageNames: packagesToUpdate } =
         getDependencyInstallSpecs({
           dependencies: candidate.dependencies,
+          devDependencyNames: candidate.devDependencyNames,
           releasedPackageVersions,
         })
 
@@ -297,6 +300,7 @@ export default async function startUpdateDependents({
       const bumpedPackageNames = await installDependencyUpdates({
         cwd: repositoryWorkingDirectory,
         dependencies: candidate.dependencies,
+        devDependencyNames: candidate.devDependencyNames,
         releasedPackageVersions,
         isUpdatingTypes: isUpdatingTypes === 'yes',
       })
@@ -519,6 +523,7 @@ async function readScannedProductRepository({
       packageName: undefined,
       packageVersion: undefined,
       dependencies: {},
+      devDependencyNames: [],
       supportsDependencyUpdates: false,
     }
   }
@@ -526,11 +531,16 @@ async function readScannedProductRepository({
   const result = await readPackageUp({
     cwd: repositoryWorkingDirectory,
   })
+  const trackedDependencies = collectTrackedDependencies({
+    dependencies: result?.packageJson.dependencies,
+    devDependencies: result?.packageJson.devDependencies,
+  })
   return {
     productRepository,
     packageName: result?.packageJson.name,
     packageVersion: result?.packageJson.version,
-    dependencies: result?.packageJson.dependencies || {},
+    dependencies: trackedDependencies.dependencies,
+    devDependencyNames: trackedDependencies.devDependencyNames,
     supportsDependencyUpdates: true,
   }
 }
@@ -694,23 +704,35 @@ function logSkippedRepository({
 async function installDependencyUpdates({
   cwd,
   dependencies,
+  devDependencyNames,
   releasedPackageVersions,
   isUpdatingTypes,
 }: {
   cwd: string
   dependencies: Record<string, string | undefined>
+  devDependencyNames: string[]
   releasedPackageVersions: Map<string, string>
   isUpdatingTypes: boolean
 }): Promise<string[]> {
-  const { bumpedPackageNames, installSpecs } = getDependencyInstallSpecs({
-    dependencies,
-    releasedPackageVersions,
-  })
+  const { bumpedPackageNames, installSpecs, devInstallSpecs } =
+    getDependencyInstallSpecs({
+      dependencies,
+      devDependencyNames,
+      releasedPackageVersions,
+    })
 
   if (isUpdatingTypes) {
     await executeCommand(
       'npm',
       ['install', '--package-lock-only', '-D', '@oneblink/types'],
+      cwd,
+    )
+  }
+
+  if (devInstallSpecs.length) {
+    await executeCommand(
+      'npm',
+      ['install', '--package-lock-only', '--save-dev', ...devInstallSpecs],
       cwd,
     )
   }

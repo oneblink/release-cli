@@ -5,6 +5,7 @@ export type ScannedProductRepository = {
   packageName: string | undefined
   packageVersion: string | undefined
   dependencies: Record<string, string | undefined>
+  devDependencyNames: string[]
   supportsDependencyUpdates: boolean
 }
 
@@ -13,6 +14,7 @@ export type DependentCandidate = {
   packageName: string
   packageVersion: string
   dependencies: Record<string, string | undefined>
+  devDependencyNames: string[]
   currentSourceDependencyVersion: string
 }
 
@@ -21,6 +23,31 @@ export function getOwnDependencyVersion(
   packageName: string,
 ): string | undefined {
   return new Map(Object.entries(dependencies)).get(packageName)
+}
+
+export function collectTrackedDependencies({
+  dependencies,
+  devDependencies,
+}: {
+  dependencies: Record<string, string | undefined> | undefined
+  devDependencies: Record<string, string | undefined> | undefined
+}): {
+  dependencies: Record<string, string | undefined>
+  devDependencyNames: string[]
+} {
+  const productionDependencies = dependencies ?? {}
+  const developmentDependencies = devDependencies ?? {}
+  return {
+    dependencies: {
+      ...developmentDependencies,
+      ...productionDependencies,
+    },
+    devDependencyNames: Object.keys(developmentDependencies).filter(
+      (packageName) =>
+        getOwnDependencyVersion(productionDependencies, packageName) ===
+        undefined,
+    ),
+  }
 }
 
 export function getDependentCandidates({
@@ -59,6 +86,7 @@ export function getDependentCandidates({
       packageName: scannedRepository.packageName,
       packageVersion: scannedRepository.packageVersion,
       dependencies: scannedRepository.dependencies,
+      devDependencyNames: scannedRepository.devDependencyNames,
       currentSourceDependencyVersion: currentDependencyVersion,
     })
   }
@@ -144,28 +172,39 @@ export function getRepositoriesNeedingDependencyUpdates({
 
 export function getDependencyInstallSpecs({
   dependencies,
+  devDependencyNames = [],
   releasedPackageVersions,
 }: {
   dependencies: Record<string, string | undefined>
+  devDependencyNames?: string[]
   releasedPackageVersions: Map<string, string>
 }): {
   bumpedPackageNames: string[]
   installSpecs: string[]
+  devInstallSpecs: string[]
 } {
   const bumpedPackageNames: string[] = []
   const installSpecs: string[] = []
+  const devInstallSpecs: string[] = []
+  const devDependencyNameSet = new Set(devDependencyNames)
 
   for (const [packageName, version] of releasedPackageVersions) {
     const currentVersion = getOwnDependencyVersion(dependencies, packageName)
     if (currentVersion && currentVersion !== `^${version}`) {
-      installSpecs.push(`${packageName}@${version}`)
+      const installSpec = `${packageName}@${version}`
       bumpedPackageNames.push(packageName)
+      if (devDependencyNameSet.has(packageName)) {
+        devInstallSpecs.push(installSpec)
+      } else {
+        installSpecs.push(installSpec)
+      }
     }
   }
 
   return {
     bumpedPackageNames,
     installSpecs,
+    devInstallSpecs,
   }
 }
 
