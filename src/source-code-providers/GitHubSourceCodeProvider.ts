@@ -81,11 +81,16 @@ export default class GitHubSourceCodeProvider extends SourceCodeProvider {
         owner: this.owner,
         repo: this.repositoryName,
       })
+      // An unqualified head is resolved on the authenticated user's fork.
+      // Fine-grained tokens scoped to the organisation cannot read that fork,
+      // and GitHub rejects the request with "not all refs are readable" even
+      // though the branch was pushed to this repository.
       const { data } = await this.octokit.rest.pulls.create({
         owner: this.owner,
         repo: this.repositoryName,
         title,
-        head: branchName,
+        head: `${this.owner}:${branchName}`,
+        head_repo: this.repositoryName,
         base: repository.default_branch,
         body,
       })
@@ -95,11 +100,13 @@ export default class GitHubSourceCodeProvider extends SourceCodeProvider {
         created: true,
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const permissionHint = message.includes('not all refs are readable')
+        ? ' GITHUB_OAUTH_TOKEN needs Contents: Read and Pull requests: Write on this repository.'
+        : ''
       console.warn(
         chalk.yellow(
-          `Failed to create pull request for "${this.repositoryName}": ${
-            error instanceof Error ? error.message : String(error)
-          }. Falling back to create-PR URL.`,
+          `Failed to create pull request for "${this.repositoryName}": ${message}.${permissionHint} Falling back to create-PR URL.`,
         ),
       )
       return {
