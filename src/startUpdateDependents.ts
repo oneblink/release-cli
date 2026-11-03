@@ -43,14 +43,12 @@ export default async function startUpdateDependents({
   force = false,
   forceUpdateDependency = false,
   forcePublishIntermediateDependency = false,
-  includeDevDependencies = false,
   ticket: ticketFlag,
 }: {
   cwd: string
   force?: boolean
   forceUpdateDependency?: boolean
   forcePublishIntermediateDependency?: boolean
-  includeDevDependencies?: boolean
   ticket?: string
 }) {
   const shouldForceUpdateDependency = force || forceUpdateDependency
@@ -93,7 +91,6 @@ export default async function startUpdateDependents({
   try {
     const { scannedRepositories } = await scanProductRepositories({
       retainedClones,
-      includeDevDependencies,
     })
 
     const candidates = getDependentCandidates({
@@ -458,10 +455,8 @@ async function resolveNextVersion({
 
 async function scanProductRepositories({
   retainedClones,
-  includeDevDependencies,
 }: {
   retainedClones: Map<string, RetainedClone>
-  includeDevDependencies: boolean
 }): Promise<{
   scannedRepositories: ScannedProductRepository[]
 }> {
@@ -484,7 +479,6 @@ async function scanProductRepositories({
       const scannedRepository = await readScannedProductRepository({
         productRepository,
         repositoryWorkingDirectory,
-        includeDevDependencies,
       })
       scannedRepositories.push(scannedRepository)
 
@@ -510,11 +504,9 @@ async function scanProductRepositories({
 async function readScannedProductRepository({
   productRepository,
   repositoryWorkingDirectory,
-  includeDevDependencies,
 }: {
   productRepository: ProductRepository
   repositoryWorkingDirectory: string
-  includeDevDependencies: boolean
 }): Promise<ScannedProductRepository> {
   const repositoryPlugin = await getRepositoryPlugin({
     cwd: repositoryWorkingDirectory,
@@ -542,7 +534,6 @@ async function readScannedProductRepository({
   const trackedDependencies = collectTrackedDependencies({
     dependencies: result?.packageJson.dependencies,
     devDependencies: result?.packageJson.devDependencies,
-    includeDevDependencies,
   })
   return {
     productRepository,

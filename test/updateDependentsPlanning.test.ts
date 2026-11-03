@@ -390,25 +390,6 @@ describe('getDependencyInstallSpecs', () => {
 })
 
 describe('collectTrackedDependencies', () => {
-  it('ignores dev dependencies unless they are included', () => {
-    expect(
-      collectTrackedDependencies({
-        dependencies: {
-          '@oneblink/sdk-core': '^9.0.0',
-        },
-        devDependencies: {
-          '@oneblink/types': '^8.0.0',
-        },
-        includeDevDependencies: false,
-      }),
-    ).toEqual({
-      dependencies: {
-        '@oneblink/sdk-core': '^9.0.0',
-      },
-      devDependencyNames: [],
-    })
-  })
-
   it('tracks dev dependencies and keeps production dependencies ahead of them', () => {
     expect(
       collectTrackedDependencies({
@@ -419,7 +400,6 @@ describe('collectTrackedDependencies', () => {
           '@oneblink/sdk-core': '^8.0.0',
           '@oneblink/types': '^8.0.0',
         },
-        includeDevDependencies: true,
       }),
     ).toEqual({
       dependencies: {

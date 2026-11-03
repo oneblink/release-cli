@@ -28,23 +28,14 @@ export function getOwnDependencyVersion(
 export function collectTrackedDependencies({
   dependencies,
   devDependencies,
-  includeDevDependencies,
 }: {
   dependencies: Record<string, string | undefined> | undefined
   devDependencies: Record<string, string | undefined> | undefined
-  includeDevDependencies: boolean
 }): {
   dependencies: Record<string, string | undefined>
   devDependencyNames: string[]
 } {
   const productionDependencies = dependencies ?? {}
-  if (!includeDevDependencies) {
-    return {
-      dependencies: productionDependencies,
-      devDependencyNames: [],
-    }
-  }
-
   const developmentDependencies = devDependencies ?? {}
   return {
     dependencies: {
@@ -52,7 +43,9 @@ export function collectTrackedDependencies({
       ...productionDependencies,
     },
     devDependencyNames: Object.keys(developmentDependencies).filter(
-      (packageName) => productionDependencies[packageName] === undefined,
+      (packageName) =>
+        getOwnDependencyVersion(productionDependencies, packageName) ===
+        undefined,
     ),
   }
 }

@@ -59,7 +59,7 @@ ${chalk.bold('Examples')}
   oneblink-release fix-vulnerabilities --force --ticket ON-4323
 
 ${chalk.bold.blue(
-  'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--include-dev-dependencies] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
+  'oneblink-release repository [next-version] [--no-git] [--name] [--no-name] [--cwd path] [--update-dependents] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
 )}
 
 ${chalk.grey('Release a single repository.')}
@@ -84,10 +84,6 @@ ${chalk.grey('Release a single repository.')}
     --update-dependents .................... After the release is tagged, wait for the NPM package to be
                                              published, then run update-dependents.
 
-    --include-dev-dependencies ............. When used with --update-dependents, also update product
-                                             repositories that list the package in devDependencies.
-                                             Those updates stay in devDependencies.
-
     --force ................................ When used with --update-dependents, skip all update-dependents
                                              prompts. Requires --ticket.
 
@@ -105,7 +101,6 @@ ${chalk.bold('Examples')}
   oneblink-release repository
   oneblink-release repository --no-name
   oneblink-release repository --no-name --update-dependents
-  oneblink-release repository --no-name --update-dependents --include-dev-dependencies
   oneblink-release repository --no-name --update-dependents --force-update-dependency
   oneblink-release repository --no-name --update-dependents --force --ticket ON-4323
   oneblink-release repository --name="Inappropriate Release Name"
@@ -117,7 +112,7 @@ ${chalk.bold('Examples')}
   oneblink-release repository 1.1.1-uat.1 --no-git
 
 ${chalk.bold.blue(
-  'oneblink-release update-dependents [--cwd path] [--include-dev-dependencies] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
+  'oneblink-release update-dependents [--cwd path] [--force] [--force-update-dependency] [--force-publish-intermediate-dependency] [--ticket]',
 )}
 
 ${chalk.grey(
@@ -128,9 +123,6 @@ requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
   --cwd .................................... Directory of the repository that is the dependency relative
                                              to the current working directory, defaults to the current
                                              working directory.
-
-  --include-dev-dependencies ............... Also update product repositories that list the package in
-                                             devDependencies. Those updates stay in devDependencies.
 
   --force .................................. Skip all prompts. Requires --ticket.
 
@@ -144,7 +136,6 @@ requests when GITHUB_OAUTH_TOKEN is set (otherwise print create-PR URLs).`,
 ${chalk.bold('Examples')}
 
   oneblink-release update-dependents
-  oneblink-release update-dependents --include-dev-dependencies
   oneblink-release update-dependents --cwd ../path/to/code
   oneblink-release update-dependents --force-update-dependency
   oneblink-release update-dependents --force-publish-intermediate-dependency
@@ -192,10 +183,6 @@ ${chalk.bold('Examples')}
         default: false,
       },
       forcePublishIntermediateDependency: {
-        type: 'boolean',
-        default: false,
-      },
-      includeDevDependencies: {
         type: 'boolean',
         default: false,
       },
@@ -248,7 +235,6 @@ async function run(): Promise<void> {
         forceUpdateDependency: cli.flags.forceUpdateDependency,
         forcePublishIntermediateDependency:
           cli.flags.forcePublishIntermediateDependency,
-        includeDevDependencies: cli.flags.includeDevDependencies,
         ticket: cli.flags.ticket,
       })
       break
@@ -341,7 +327,6 @@ async function run(): Promise<void> {
           forceUpdateDependency: cli.flags.forceUpdateDependency,
           forcePublishIntermediateDependency:
             cli.flags.forcePublishIntermediateDependency,
-          includeDevDependencies: cli.flags.includeDevDependencies,
           ticket: cli.flags.ticket,
         })
       }
